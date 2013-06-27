@@ -187,6 +187,7 @@ int kgsl_devfreq_target(struct device *dev, unsigned long *freq, u32 flags)
 	struct kgsl_pwrctrl *pwr;
 	int level, i, b;
 	unsigned long cur_freq;
+	int bus_mod = 0;
 
 	if (device == NULL)
 		return -ENODEV;
@@ -197,14 +198,32 @@ int kgsl_devfreq_target(struct device *dev, unsigned long *freq, u32 flags)
 
 	pwr = &device->pwrctrl;
 
+	if (flags & DEVFREQ_FLAG_FAST_HINT)
+		bus_mod = 1;
+
 	mutex_lock(&device->mutex);
 	cur_freq = kgsl_pwrctrl_active_freq(pwr);
 	level = pwr->active_pwrlevel;
 
-	if (*freq != cur_freq) {
-		level = pwr->max_pwrlevel;
-		for (i = pwr->min_pwrlevel; i >= pwr->max_pwrlevel; i--)
-			if (*freq <= pwr->pwrlevels[i].gpu_freq) {
+	if (*freq > cur_freq && pwr->active_pwrlevel > 0) {
+		/*
+		 * If FAST is requested, move up just one level,
+		 * otherwise - move up until required freq or higher
+		 */
+		level = pwr->active_pwrlevel - 1;
+		if (!bus_mod)
+			while (*freq > pwr->pwrlevels[level].gpu_freq
+					&& level > 0)
+				level--;
+	} else if (*freq < cur_freq
+			&& pwr->active_pwrlevel < (pwr->num_pwrlevels - 2)) {
+		/*
+		 * Move down at least 1 frequency. If we fall out the bottom
+		 * of the loop, use the lowest frequency.
+		 */
+		level = (pwr->num_pwrlevels - 1);
+		for (i = pwr->active_pwrlevel; i < level; i += pwr->step_mul)
+			if (pwr->pwrlevels[i].gpu_freq <= *freq) {
 				level = i;
 				break;
 			}
