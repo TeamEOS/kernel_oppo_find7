@@ -158,6 +158,9 @@ Optional properties:
 				total numbers of MMBs per pipe while values, if
 				any, following first one denotes indexes of MMBs
 				to that RGB pipe.
+- qcom,mdss-highest-bank-bit: Property to indicate tile format as opposed to usual
+				linear format. The value tells the GPU highest memory
+				 bank bit used.
 - qcom,mdss-rotator-ot-limit:	This integer value indicates maximum number of pending
 				writes that can be allowed from rotator client. Default
 				value is 16 which is the maximum. This value can be
@@ -254,4 +257,3 @@ Example:
 			qcom,mdss-fb-split = <480 240>
 		};
 	};
-
