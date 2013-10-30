@@ -249,6 +249,7 @@ struct msm_vidc_inst {
 	struct list_head registered_bufs;
 	bool map_output_buffer;
 	struct v4l2_ctrl **ctrls;
+	atomic_t get_seq_hdr_cnt;
 };
 
 extern struct msm_vidc_drv *vidc_driver;

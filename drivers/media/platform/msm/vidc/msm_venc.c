@@ -700,6 +700,16 @@ static struct msm_vidc_ctrl msm_venc_ctrls[] = {
 		.default_value =
 			V4L2_MPEG_VIDC_VIDEO_PRESERVE_TEXT_QUALITY_DISABLED,
 	},
+		.id = V4L2_CID_MPEG_VIDC_VIDEO_REQUEST_SEQ_HEADER,
+		.name = "Request Seq Header",
+		.type = V4L2_CTRL_TYPE_BUTTON,
+		.minimum = 0,
+		.maximum = 0,
+		.default_value = 0,
+		.step = 0,
+		.menu_skip_mask = 0,
+		.qmenu = NULL,
+	},
 	{
 		.id = V4L2_CID_MPEG_VIDC_VIDEO_DEINTERLACE,
 		.name = "Deinterlace for encoder",
@@ -1935,6 +1945,9 @@ static int try_set_ctrl(struct msm_vidc_inst *inst, struct v4l2_ctrl *ctrl)
 		property_id = HAL_PARAM_VENC_PRESERVE_TEXT_QUALITY;
 		preserve_text_quality.enable = ctrl->val;
 		pdata = &preserve_text_quality;
+		break;
+	case V4L2_CID_MPEG_VIDC_VIDEO_REQUEST_SEQ_HEADER:
+		atomic_inc(&inst->get_seq_hdr_cnt);
 		break;
 	case V4L2_CID_MPEG_VIDC_VIDEO_DEINTERLACE:
 	{
