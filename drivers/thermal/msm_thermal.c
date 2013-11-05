@@ -2034,4 +2034,3 @@ int __init msm_thermal_late_init(void)
 	return 0;
 }
 late_initcall(msm_thermal_late_init);
-
