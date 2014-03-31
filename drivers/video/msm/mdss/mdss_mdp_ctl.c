@@ -141,13 +141,13 @@ static int mdss_mdp_ctl_perf_commit(struct mdss_data_type *mdata, u32 flags)
 	int cnum;
 	unsigned long clk_rate = 0;
 	u64 bus_ab_quota = 0, bus_ib_quota = 0;	
-#ifdef CONFIG_VENDOR_EDIT
+#ifdef CONFIG_MACH_OPPO
 /* Xinqin.Yang@PhoneSW.Driver, 2014/02/11  Add for Find7S */
     if (get_pcb_version() >= HW_VERSION__20) {
 	    bus_ab_quota = 3000000000UL;
 	    bus_ib_quota = 3000000000UL;
     }
-#endif /*CONFIG_VENDOR_EDIT*/
+#endif /*CONFIG_MACH_OPPO*/
 
 	if (!flags) {
 		pr_err("nothing to update\n");
@@ -172,14 +172,14 @@ static int mdss_mdp_ctl_perf_commit(struct mdss_data_type *mdata, u32 flags)
 		bus_ab_quota <<= MDSS_MDP_BUS_FACTOR_SHIFT;
 		mdss_mdp_bus_scale_set_quota(bus_ab_quota, bus_ib_quota);
 	}
-#ifndef CONFIG_VENDOR_EDIT
+#ifndef CONFIG_MACH_OPPO
 /* Xinqin.Yang@PhoneSW.Driver, 2014/02/11  Modify for Find7S */
 	if (flags & MDSS_MDP_PERF_UPDATE_CLK) {
 		clk_rate = MDSS_MDP_CLK_FUDGE_FACTOR(clk_rate);
 		pr_debug("update clk rate = %lu HZ\n", clk_rate);
 		mdss_mdp_set_clk_rate(clk_rate);
 	}
-#else /*CONFIG_VENDOR_EDIT*/
+#else /*CONFIG_MACH_OPPO*/
 	if (get_pcb_version() < HW_VERSION__20) { /* For Find7 */
         if (flags & MDSS_MDP_PERF_UPDATE_CLK) {
             clk_rate = MDSS_MDP_CLK_FUDGE_FACTOR(clk_rate);
@@ -194,7 +194,7 @@ static int mdss_mdp_ctl_perf_commit(struct mdss_data_type *mdata, u32 flags)
 			mdss_mdp_set_clk_rate(clk_rate);
 		}
 	}
-#endif /*CONFIG_VENDOR_EDIT*/
+#endif /*CONFIG_MACH_OPPO*/
 	mutex_unlock(&mdss_mdp_ctl_lock);
 
 	return 0;
@@ -640,7 +640,7 @@ int mdss_mdp_wb_mixer_destroy(struct mdss_mdp_mixer *mixer)
 	return 0;
 }
 
-#ifdef CONFIG_VENDOR_EDIT
+#ifdef CONFIG_MACH_OPPO
 /* Xinqin.Yang@PhoneSW.Driver, 2014/02/26  Add for continous display */
 static inline struct mdss_mdp_ctl *mdss_mdp_get_split_ctl(
        struct mdss_mdp_ctl *ctl)
@@ -651,16 +651,16 @@ static inline struct mdss_mdp_ctl *mdss_mdp_get_split_ctl(
     return NULL;
 }
 
-#endif /*CONFIG_VENDOR_EDIT*/
+#endif /*CONFIG_MACH_OPPO*/
 
 int mdss_mdp_ctl_splash_finish(struct mdss_mdp_ctl *ctl, bool handoff)
 {
-#ifdef CONFIG_VENDOR_EDIT
+#ifdef CONFIG_MACH_OPPO
 /* Xinqin.Yang@PhoneSW.Driver, 2014/02/26  Add for continous display */
     struct mdss_mdp_ctl *sctl = mdss_mdp_get_split_ctl(ctl);
     if (sctl)
         sctl->panel_data->panel_info.cont_splash_enabled = 0;
-#endif /*CONFIG_VENDOR_EDIT*/
+#endif /*CONFIG_MACH_OPPO*/
 	switch (ctl->panel_data->panel_info.type) {
 	case MIPI_VIDEO_PANEL:
 		return mdss_mdp_video_reconfigure_splash_done(ctl, handoff);
@@ -684,7 +684,7 @@ static inline int mdss_mdp_set_split_ctl(struct mdss_mdp_ctl *ctl,
 	return 0;
 }
 
-#ifndef CONFIG_VENDOR_EDIT
+#ifndef CONFIG_MACH_OPPO
 /* Xinqin.Yang@PhoneSW.Driver, 2014/02/26  Delete for continous display */
 static inline struct mdss_mdp_ctl *mdss_mdp_get_split_ctl(
 		struct mdss_mdp_ctl *ctl)
@@ -694,7 +694,7 @@ static inline struct mdss_mdp_ctl *mdss_mdp_get_split_ctl(
 
 	return NULL;
 }
-#endif /*CONFIG_VENDOR_EDIT*/
+#endif /*CONFIG_MACH_OPPO*/
 
 static int mdss_mdp_ctl_fbc_enable(int enable,
 		struct mdss_mdp_mixer *mixer, struct mdss_panel_info *pdata)
