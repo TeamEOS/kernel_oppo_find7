@@ -85,6 +85,21 @@ static void _iommu_unlock(struct kgsl_iommu const *iommu)
 		iommu_access_ops->iommu_lock_release(
 						iommu->sync_lock_initialized);
 }
+#else
+static void _iommu_lock(struct kgsl_iommu const *iommu)
+{
+	if (iommu_access_ops && iommu_access_ops->iommu_lock_acquire)
+		iommu_access_ops->iommu_lock_acquire(
+						iommu->sync_lock_initialized);
+}
+
+static void _iommu_unlock(struct kgsl_iommu const *iommu)
+{
+	if (iommu_access_ops && iommu_access_ops->iommu_lock_release)
+		iommu_access_ops->iommu_lock_release(
+						iommu->sync_lock_initialized);
+}
+#endif
 
 struct remote_iommu_petersons_spinlock kgsl_iommu_sync_lock_vars;
 
