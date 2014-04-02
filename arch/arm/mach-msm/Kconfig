@@ -3115,4 +3115,11 @@ config KRAIT_REGULATOR
 	 line from the PMIC. This supply line is powered by multiple
 	 regulators running in ganged mode inside the PMIC. Enable
 	 this option to support such configurations.
+
+# OPPO modifications
+config VENDOR_EDIT
+	bool "Enable OPPO specific code"
+	default y
+	depends on ARCH_MSM8974
+
 endif
