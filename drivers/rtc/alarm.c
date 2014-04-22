@@ -173,14 +173,12 @@ static void rtc_task(struct work_struct *work)
 }
 #endif
 /* OPPO 2013-11-19 yuyi Add end for power up alarm */
+
+static void alarm_shutdown(struct platform_device *dev);
 void set_power_on_alarm(long secs)
 {
 	power_on_alarm = secs;
-	/*OPPO yuyi add begin just for analysis boot automaticly*/
-	#ifdef CONFIG_MACH_OPPO
-	printk("alarm  set_power_on_alarm time = %ld\n",secs);
-	#endif
-	/*OPPO yuyi add end just for analysis boot automaticly*/
+	alarm_shutdown(NULL);
 }
 
 

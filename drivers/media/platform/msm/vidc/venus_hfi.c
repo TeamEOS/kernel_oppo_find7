@@ -1,4 +1,4 @@
-/* Copyright (c) 2012-2013, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2012-2014, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -1630,37 +1630,25 @@ static int venus_hfi_core_release(void *device)
 	return 0;
 }
 
-#ifndef CONFIG_MACH_OPPO
-//tangxl@OnlineRD.MultiMediaService, 2014/2/18,Modify for hardware encoder create fail when record 4k video, from QC patch.
-//static int venus_hfi_is_cmd_pending(struct venus_hfi_device *dev)
-#else
 static int venus_hfi_get_q_size(struct venus_hfi_device *dev,
 	unsigned int q_index)
-#endif /* CONFIG_MACH_OPPO */
 {
 	struct hfi_queue_header *queue;
 	struct vidc_iface_q_info *q_info;
 	u32 write_ptr, read_ptr;
 	u32 rc = 0;
-#ifndef CONFIG_MACH_OPPO
-//tangxl@OnlineRD.MultiMediaService, 2014/2/18,Modify for hardware encoder create fail when record 4k video, from QC patch.
-	/*q_info = &dev->iface_queues[VIDC_IFACEQ_CMDQ_IDX];
-	if (!q_info)
-		dprintk(VIDC_ERR, "cannot read shared Q's");
-	queue = (struct hfi_queue_header *) q_info->q_hdr;*/
-#else	
+
 	if (q_index >= VIDC_IFACEQ_NUMQ) {
 		dprintk(VIDC_ERR, "Invalid q index: %d\n", q_index);
 		return -ENOENT;
 	}
+
 	q_info = &dev->iface_queues[q_index];
 	if (!q_info) {
-		dprintk(VIDC_ERR, "cannot read shared Q's\n");
+		dprintk(VIDC_ERR, "cannot read shared Q's");
 		return -ENOENT;
 	}
-	queue = (struct hfi_queue_header *)q_info->q_hdr;
-#endif /* CONFIG_MACH_OPPO */
-	
+	queue = (struct hfi_queue_header *) q_info->q_hdr;
 	if (!queue) {
 		dprintk(VIDC_ERR, "queue not present");
 		return -ENOENT;
@@ -1683,20 +1671,12 @@ static inline void venus_hfi_clk_gating_on(struct venus_hfi_device *device)
 	}
 	/*SYS Idle should be last message so mask any further interrupts
 	 * until clocks are enabled again.*/
-#ifndef CONFIG_MACH_OPPO
-//tangxl@OnlineRD.MultiMediaService, 2014/2/18,Modify for hardware encoder create fail when record 4k video, from QC patch.
-	/*venus_hfi_write_register(device,
-			VIDC_WRAPPER_INTR_MASK,
-			VIDC_WRAPPER_INTR_MASK_A2HVCODEC_BMSK | VIDC_WRAPPER_INTR_MASK_A2HCPU_BMSK, 0);*/
-#else
 	if (!venus_hfi_get_q_size(device, VIDC_IFACEQ_MSGQ_IDX)) {
 		venus_hfi_write_register(device,
 				VIDC_WRAPPER_INTR_MASK,
 				VIDC_WRAPPER_INTR_MASK_A2HVCODEC_BMSK |
 				VIDC_WRAPPER_INTR_MASK_A2HCPU_BMSK, 0);
 	}
-#endif /* CONFIG_MACH_OPPO */
-
 	venus_hfi_clk_disable(device);
 	if (!queue_delayed_work(device->venus_pm_workq, &venus_hfi_pm_work,
 			msecs_to_jiffies(msm_vidc_pwr_collapse_delay)))
@@ -2539,12 +2519,7 @@ static int venus_hfi_try_clk_gating(struct venus_hfi_device *device)
 	}
 	mutex_lock(&device->write_lock);
 	mutex_lock(&device->clk_pwr_lock);
-#ifndef CONFIG_MACH_OPPO
-//tangxl@OnlineRD.MultiMediaService, 2014/2/18,Modify for hardware encoder create fail when record 4k video, from QC patch.
-//	rc = venus_hfi_is_cmd_pending(device);
-#else
 	rc = venus_hfi_get_q_size(device, VIDC_IFACEQ_CMDQ_IDX);
-#endif /* CONFIG_MACH_OPPO */
 	ctrl_status = venus_hfi_read_register(
 		device,
 		VIDC_CPU_CS_SCIACMDARG0);
