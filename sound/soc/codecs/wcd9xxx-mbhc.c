@@ -109,7 +109,7 @@
  * Invalid voltage range for the detection
  * of plug type with current source
  */
-#define WCD9XXX_CS_MEAS_INVALD_RANGE_LOW_MV 110
+#define WCD9XXX_CS_MEAS_INVALD_RANGE_LOW_MV 160
 #define WCD9XXX_CS_MEAS_INVALD_RANGE_HIGH_MV 265
 
 /*
@@ -140,6 +140,7 @@
 #define WCD9XXX_CS_IPHONE_HIG_THRD 665
 #define WCD9XXX_CS_IPHONE_LOW_THRD 590
 #endif
+
 static int impedance_detect_en;
 module_param(impedance_detect_en, int,
 			S_IRUGO | S_IWUSR | S_IWGRP);
@@ -1413,7 +1414,6 @@ wcd9xxx_cs_find_plug_type(struct wcd9xxx_mbhc *mbhc,
 
 		vdce = __wcd9xxx_codec_sta_dce_v(mbhc, true, d->dce,
 						 dce_z, (u32)mb_mv);
-
 		d->_vdces = vdce;
 		if (d->_vdces < no_mic)
 			d->_type = PLUG_TYPE_HEADPHONE;
@@ -1445,14 +1445,6 @@ wcd9xxx_cs_find_plug_type(struct wcd9xxx_mbhc *mbhc,
 			type = PLUG_TYPE_INVALID;
 			goto exit;
 		}
-	}
-
-	if (event_state & (1 << MBHC_EVENT_PA_HPHL)) {
-		pr_debug("%s: HPHL PA was ON\n", __func__);
-	} else if (ch != sz && ch > 0) {
-		pr_debug("%s: Invalid, inconsistent HPHL\n", __func__);
-		type = PLUG_TYPE_INVALID;
-		goto exit;
 	}
 
 	delta_thr = ((highhph_cnt == sz) || highhph) ?
@@ -1506,22 +1498,35 @@ wcd9xxx_cs_find_plug_type(struct wcd9xxx_mbhc *mbhc,
 		}
 	}
 
+	if (type == PLUG_TYPE_HEADSET && dgnd && !dgnd->mic_bias) {
+		/* if plug type is Headphone report as GND_MIC_SWAP */
+		if (dgnd->_type == PLUG_TYPE_HEADPHONE) {
+			pr_debug("%s: GND_MIC_SWAP\n", __func__);
+			type = PLUG_TYPE_GND_MIC_SWAP;
+			/*
+			 * if type is GND_MIC_SWAP we should not check
+			 * HPHL status hence goto exit
+			 */
+			goto exit;
+		} else if (dgnd->_type != PLUG_TYPE_HEADSET && !dmicbias) {
+			pr_debug("%s: Invalid, inconsistent types\n", __func__);
+			type = PLUG_TYPE_INVALID;
+		}
+	}
+
+	if (event_state & (1 << MBHC_EVENT_PA_HPHL)) {
+		pr_debug("%s: HPHL PA was ON\n", __func__);
+	} else if (ch != sz && ch > 0) {
+		pr_debug("%s: Invalid, inconsistent HPHL..\n", __func__);
+		type = PLUG_TYPE_INVALID;
+		goto exit;
+	}
+
 	if (!(event_state & (1UL << MBHC_EVENT_PA_HPHL))) {
 		if (((type == PLUG_TYPE_HEADSET ||
 		      type == PLUG_TYPE_HEADPHONE) && ch != sz)) {
 			pr_debug("%s: Invalid, not fully inserted, TYPE %d\n",
 				 __func__, type);
-			type = PLUG_TYPE_INVALID;
-		}
-	}
-	if (type == PLUG_TYPE_HEADSET && dgnd && !dgnd->mic_bias) {
-		if ((dgnd->_vdces + WCD9XXX_CS_GM_SWAP_THRES_MIN_MV <
-		     minv) &&
-		    (dgnd->_vdces + WCD9XXX_CS_GM_SWAP_THRES_MAX_MV >
-		     maxv))
-			type = PLUG_TYPE_GND_MIC_SWAP;
-		else if (dgnd->_type != PLUG_TYPE_HEADSET && !dmicbias) {
-			pr_debug("%s: Invalid, inconsistent types\n", __func__);
 			type = PLUG_TYPE_INVALID;
 		}
 	}
