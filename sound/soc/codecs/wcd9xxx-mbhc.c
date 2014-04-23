@@ -4881,18 +4881,9 @@ static int wcd9xxx_detect_impedance(struct wcd9xxx_mbhc *mbhc, uint32_t *zl,
 int wcd9xxx_mbhc_get_impedance(struct wcd9xxx_mbhc *mbhc, uint32_t *zl,
 			       uint32_t *zr)
 {
-      //liuyan 2014-1-7 del for pluging headset deadlock   
-       #ifndef CONFIG_MACH_OPPO
-	WCD9XXX_BCL_LOCK(mbhc->resmgr);
-	#endif 
-	//liuyan del end
 	*zl = mbhc->zl;
 	*zr = mbhc->zr;
-	//liuyan 2014-1-7 del for pluging headset deadlock   
-       #ifndef CONFIG_MACH_OPPO
-	WCD9XXX_BCL_UNLOCK(mbhc->resmgr);
-       #endif
-	 //liuyan del end
+
 	if (*zl && *zr)
 		return 0;
 	else
