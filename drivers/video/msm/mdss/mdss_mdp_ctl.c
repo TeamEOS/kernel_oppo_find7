@@ -1,4 +1,4 @@
-/* Copyright (c) 2012-2013, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2012-2014, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -640,27 +640,21 @@ int mdss_mdp_wb_mixer_destroy(struct mdss_mdp_mixer *mixer)
 	return 0;
 }
 
-#ifdef CONFIG_MACH_OPPO
-/* Xinqin.Yang@PhoneSW.Driver, 2014/02/26  Add for continous display */
 static inline struct mdss_mdp_ctl *mdss_mdp_get_split_ctl(
-       struct mdss_mdp_ctl *ctl)
+		struct mdss_mdp_ctl *ctl)
 {
-    if (ctl && ctl->mixer_right && (ctl->mixer_right->ctl != ctl))
-        return ctl->mixer_right->ctl;
+	if (ctl && ctl->mixer_right && (ctl->mixer_right->ctl != ctl))
+		return ctl->mixer_right->ctl;
 
-    return NULL;
+	return NULL;
 }
-
-#endif /*CONFIG_MACH_OPPO*/
 
 int mdss_mdp_ctl_splash_finish(struct mdss_mdp_ctl *ctl, bool handoff)
 {
-#ifdef CONFIG_MACH_OPPO
-/* Xinqin.Yang@PhoneSW.Driver, 2014/02/26  Add for continous display */
-    struct mdss_mdp_ctl *sctl = mdss_mdp_get_split_ctl(ctl);
-    if (sctl)
-        sctl->panel_data->panel_info.cont_splash_enabled = 0;
-#endif /*CONFIG_MACH_OPPO*/
+	struct mdss_mdp_ctl *sctl = mdss_mdp_get_split_ctl(ctl);
+	if (sctl)
+		sctl->panel_data->panel_info.cont_splash_enabled = 0;
+
 	switch (ctl->panel_data->panel_info.type) {
 	case MIPI_VIDEO_PANEL:
 		return mdss_mdp_video_reconfigure_splash_done(ctl, handoff);
@@ -683,18 +677,6 @@ static inline int mdss_mdp_set_split_ctl(struct mdss_mdp_ctl *ctl,
 
 	return 0;
 }
-
-#ifndef CONFIG_MACH_OPPO
-/* Xinqin.Yang@PhoneSW.Driver, 2014/02/26  Delete for continous display */
-static inline struct mdss_mdp_ctl *mdss_mdp_get_split_ctl(
-		struct mdss_mdp_ctl *ctl)
-{
-	if (ctl && ctl->mixer_right && (ctl->mixer_right->ctl != ctl))
-		return ctl->mixer_right->ctl;
-
-	return NULL;
-}
-#endif /*CONFIG_MACH_OPPO*/
 
 static int mdss_mdp_ctl_fbc_enable(int enable,
 		struct mdss_mdp_mixer *mixer, struct mdss_panel_info *pdata)
