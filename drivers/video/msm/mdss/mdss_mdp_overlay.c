@@ -1,4 +1,4 @@
-/* Copyright (c) 2012-2013, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2012-2014, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -531,11 +531,7 @@ static int mdss_mdp_overlay_pipe_setup(struct msm_fb_data_type *mfd,
 	} else {
 		pipe->overfetch_disable = 0;
 	}
-#ifndef CONFIG_MACH_OPPO
-/* Xinqin.Yang@PhoneSW.Driver, 2014/01/16  Delete for a green line lied at the right of weather screen  */
-	pipe->overfetch_disable = fmt->is_yuv &&
-			!(pipe->flags & MDP_SOURCE_ROTATED_90);
-#endif /*CONFIG_MACH_OPPO*/
+
 	pipe->bg_color = req->bg_color;
 
 	req->id = pipe->ndx;
