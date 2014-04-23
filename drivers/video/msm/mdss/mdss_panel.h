@@ -1,4 +1,4 @@
-/* Copyright (c) 2008-2013, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2008-2014, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -127,6 +127,11 @@ struct mdss_panel_recovery {
 				 - 1 clock enable
  * @MDSS_EVENT_ENABLE_PARTIAL_UPDATE: Event to update ROI of the panel.
  * @MDSS_EVENT_DSI_CMDLIST_KOFF: acquire dsi_mdp_busy lock before kickoff.
+ * @MDSS_EVENT_DSI_ULPS_CTRL:	Event to configure Ultra Lower Power Saving
+ *				mode for the DSI data and clock lanes. The
+ *				event arguments can have one of these values:
+ *				- 0: Disable ULPS mode
+ *				- 1: Enable ULPS mode
  */
 enum mdss_intf_events {
 	MDSS_EVENT_RESET = 1,
@@ -145,6 +150,7 @@ enum mdss_intf_events {
 	MDSS_EVENT_PANEL_CLK_CTRL,
 	MDSS_EVENT_DSI_CMDLIST_KOFF,
 	MDSS_EVENT_ENABLE_PARTIAL_UPDATE,
+	MDSS_EVENT_DSI_ULPS_CTRL,
 };
 
 struct lcd_panel_info {
@@ -227,9 +233,14 @@ struct mipi_panel_info {
 	u32  init_delay;
 };
 
+struct edp_panel_info {
+	char frame_rate;	/* fps */
+};
+
 enum dynamic_fps_update {
 	DFPS_SUSPEND_RESUME_MODE,
 	DFPS_IMMEDIATE_CLK_UPDATE_MODE,
+	DFPS_IMMEDIATE_PORCH_UPDATE_MODE,
 };
 
 enum lvds_mode {
@@ -272,6 +283,7 @@ struct mdss_panel_info {
 	u32 type;
 	u32 wait_cycle;
 	u32 pdest;
+	u32 brightness_max;
 	u32 bl_max;
 	u32 bl_min;
 	u32 fb_num;
@@ -294,6 +306,7 @@ struct mdss_panel_info {
 	int pwm_period;
 	u32 mode_gpio_state;
 	bool dynamic_fps;
+	bool ulps_feature_enabled;
 	char dfps_update;
 	int new_fps;
 
@@ -308,6 +321,7 @@ struct mdss_panel_info {
 	struct fbc_panel_info fbc;
 	struct mipi_panel_info mipi;
 	struct lvds_panel_info lvds;
+	struct edp_panel_info edp;
 };
 
 struct mdss_panel_data {
@@ -347,6 +361,9 @@ static inline u32 mdss_panel_get_framerate(struct mdss_panel_info *panel_info)
 	case MIPI_VIDEO_PANEL:
 	case MIPI_CMD_PANEL:
 		frame_rate = panel_info->mipi.frame_rate;
+		break;
+	case EDP_PANEL:
+		frame_rate = panel_info->edp.frame_rate;
 		break;
 	case WRITEBACK_PANEL:
 		frame_rate = DEFAULT_FRAME_RATE;

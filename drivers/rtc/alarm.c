@@ -108,6 +108,7 @@ static struct platform_device *alarm_platform_dev;
 struct alarm_queue alarms[ANDROID_ALARM_TYPE_COUNT];
 static bool suspended;
 static long power_on_alarm;
+
 /* OPPO 2013-11-19 yuyi Add begin for power up alarm */
 #ifdef CONFIG_MACH_OPPO
 
@@ -173,14 +174,22 @@ static void rtc_task(struct work_struct *work)
 }
 #endif
 /* OPPO 2013-11-19 yuyi Add end for power up alarm */
-void set_power_on_alarm(long secs)
+
+static void alarm_shutdown(struct platform_device *dev);
+void set_power_on_alarm(long secs, bool enable)
 {
-	power_on_alarm = secs;
-	/*OPPO yuyi add begin just for analysis boot automaticly*/
-	#ifdef CONFIG_MACH_OPPO
-	printk("alarm  set_power_on_alarm time = %ld\n",secs);
-	#endif
-	/*OPPO yuyi add end just for analysis boot automaticly*/
+	if (enable) {
+		power_on_alarm = secs;
+	} else {
+		if (power_on_alarm && power_on_alarm != secs) {
+			pr_alarm(FLOW, "power-off alarm mismatch: \
+				previous=%ld, now=%ld\n",
+				power_on_alarm, secs);
+		}
+		else
+			power_on_alarm = 0;
+	}
+	alarm_shutdown(NULL);
 }
 
 
@@ -861,15 +870,12 @@ static void alarm_shutdown(struct platform_device *dev)
 
 	spin_lock_irqsave(&alarm_slock, flags);
 
-	if (!power_on_alarm)
+	if (!power_on_alarm) {
+		spin_unlock_irqrestore(&alarm_slock, flags);
 		goto disable_alarm;
-	
-	/*OPPO yuyi add begin just for analysis boot automaticly*/
-	#ifdef CONFIG_MACH_OPPO
-	printk("alarm  alarm_shutdown enable alarm_powerup\n");
-	#endif
-	/*OPPO yuyi add end just for analysis boot automaticly*/
-	
+	}
+	spin_unlock_irqrestore(&alarm_slock, flags);
+
 	rtc_read_time(alarm_rtc_dev, &rtc_time);
 	getnstimeofday(&wall_time);
 	rtc_tm_to_time(&rtc_time, &rtc_secs);
@@ -896,12 +902,10 @@ static void alarm_shutdown(struct platform_device *dev)
 		pr_alarm(FLOW, "Power-on alarm set to %lu\n",
 				alarm_time);
 
-	spin_unlock_irqrestore(&alarm_slock, flags);
 	return;
 
 disable_alarm:
 	rtc_alarm_irq_enable(alarm_rtc_dev, 0);
-	spin_unlock_irqrestore(&alarm_slock, flags);
 }
 
 static struct rtc_task alarm_rtc_task = {

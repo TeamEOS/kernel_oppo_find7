@@ -26,6 +26,7 @@
 #include <linux/usb/gadget.h>
 #include <linux/workqueue.h>
 #include <linux/debugfs.h>
+#include <linux/kmemleak.h>
 
 static DEFINE_SPINLOCK(ch_lock);
 static LIST_HEAD(usb_diag_ch_list);
@@ -354,28 +355,6 @@ static void free_reqs(struct diag_context *ctxt)
 }
 
 /**
- * usb_diag_free_req() - Free USB requests
- * @ch: Channel handler
- *
- * This function free read and write USB requests for the interface
- * associated with this channel.
- *
- */
-void usb_diag_free_req(struct usb_diag_ch *ch)
-{
-	struct diag_context *ctxt = ch->priv_usb;
-	unsigned long flags;
-
-	if (ctxt) {
-		spin_lock_irqsave(&ctxt->lock, flags);
-		free_reqs(ctxt);
-		spin_unlock_irqrestore(&ctxt->lock, flags);
-	}
-
-}
-EXPORT_SYMBOL(usb_diag_free_req);
-
-/**
  * usb_diag_alloc_req() - Allocate USB requests
  * @ch: Channel handler
  * @n_write: Number of requests for Tx
@@ -403,6 +382,7 @@ int usb_diag_alloc_req(struct usb_diag_ch *ch, int n_write, int n_read)
 		req = usb_ep_alloc_request(ctxt->in, GFP_ATOMIC);
 		if (!req)
 			goto fail;
+		kmemleak_not_leak(req);
 		req->complete = diag_write_complete;
 		list_add_tail(&req->list, &ctxt->write_pool);
 	}
@@ -411,6 +391,7 @@ int usb_diag_alloc_req(struct usb_diag_ch *ch, int n_write, int n_read)
 		req = usb_ep_alloc_request(ctxt->out, GFP_ATOMIC);
 		if (!req)
 			goto fail;
+		kmemleak_not_leak(req);
 		req->complete = diag_read_complete;
 		list_add_tail(&req->list, &ctxt->read_pool);
 	}

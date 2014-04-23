@@ -1,4 +1,4 @@
-/* Copyright (c) 2002,2008-2013, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2002,2008-2014, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -122,7 +122,6 @@ KGSL_DEBUGFS_LOG(cmd_log);
 KGSL_DEBUGFS_LOG(ctxt_log);
 KGSL_DEBUGFS_LOG(mem_log);
 KGSL_DEBUGFS_LOG(pwr_log);
-KGSL_DEBUGFS_LOG(ft_log);
 
 static int memfree_hist_print(struct seq_file *s, void *unused)
 {
@@ -191,8 +190,6 @@ void kgsl_device_debugfs_init(struct kgsl_device *device)
 				&pwr_log_fops);
 	debugfs_create_file("memfree_history", 0444, device->d_debugfs, device,
 				&memfree_hist_fops);
-	debugfs_create_file("log_level_ft", 0644, device->d_debugfs, device,
-				&ft_log_fops);
 
 	/* Create postmortem dump control files */
 
@@ -263,8 +260,10 @@ static void print_mem_entry(struct seq_file *s, struct kgsl_mem_entry *entry)
 
 	kgsl_get_memory_usage(usage, sizeof(usage), m->flags);
 
-	seq_printf(s, "%08x %08lx %8d %5d %5s %10s %16s %5d\n",
-			m->gpuaddr, m->useraddr, m->size, entry->id, flags,
+	seq_printf(s, "%pK %pK %8zd %5d %5s %10s %16s %5d\n",
+			(unsigned long *) m->gpuaddr,
+			(unsigned long *) m->useraddr,
+			m->size, entry->id, flags,
 			memtype_str(entry->memtype), usage, m->sglen);
 }
 
@@ -350,7 +349,7 @@ kgsl_process_init_debugfs(struct kgsl_process_private *private)
 	 * So if debugfs is disabled in kernel, return as
 	 * success.
 	 */
-	dentry = debugfs_create_file("mem", 0400, private->debug_root, private,
+	dentry = debugfs_create_file("mem", 0444, private->debug_root, private,
 			    &process_mem_fops);
 
 	if (IS_ERR(dentry)) {

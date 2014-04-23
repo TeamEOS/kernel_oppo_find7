@@ -1,4 +1,4 @@
-/* Copyright (c) 2008-2013, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2008-2014, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -1167,10 +1167,8 @@ static irqreturn_t msm_spi_input_irq(int irq, void *dev_id)
 		if ((!dd->read_buf || op & SPI_OP_MAX_INPUT_DONE_FLAG) &&
 		    (!dd->write_buf || op & SPI_OP_MAX_OUTPUT_DONE_FLAG)) {
 			msm_spi_ack_transfer(dd);
-			if (dd->rx_unaligned_len == 0) {
 				if (atomic_inc_return(&dd->rx_irq_called) == 1)
 					return IRQ_HANDLED;
-			}
 			msm_spi_complete(dd);
 			return IRQ_HANDLED;
 		}
@@ -1982,14 +1980,17 @@ static void msm_spi_workq(struct work_struct *work)
 	if (dd->use_rlock)
 		remote_mutex_lock(&dd->r_lock);
 
-	if (!msm_spi_is_valid_state(dd)) {
+	spin_lock_irqsave(&dd->queue_lock, flags);
+	dd->transfer_pending = 1;
+	spin_unlock_irqrestore(&dd->queue_lock, flags);
+
+	if (dd->suspended || !msm_spi_is_valid_state(dd)) {
 		dev_err(dd->dev, "%s: SPI operational state not valid\n",
 			__func__);
 		status_error = 1;
 	}
-
 	spin_lock_irqsave(&dd->queue_lock, flags);
-	dd->transfer_pending = 1;
+
 	while (!list_empty(&dd->queue)) {
 		dd->cur_msg = list_entry(dd->queue.next,
 					 struct spi_message, queue);

@@ -1,4 +1,4 @@
-/* Copyright (c) 2012-2013, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2012-2014, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -203,6 +203,13 @@ irqreturn_t msm_dsi_isr_handler(int irq, void *ptr)
 	struct mdss_dsi_ctrl_pdata *ctrl =
 		(struct mdss_dsi_ctrl_pdata *)ptr;
 
+	spin_lock(&ctrl->mdp_lock);
+
+	if (ctrl->dsi_irq_mask == 0) {
+		spin_unlock(&ctrl->mdp_lock);
+		return IRQ_HANDLED;
+	}
+
 	isr = MIPI_INP(dsi_host_private->dsi_base + DSI_INT_CTRL);
 	MIPI_OUTP(dsi_host_private->dsi_base + DSI_INT_CTRL, isr);
 
@@ -213,13 +220,17 @@ irqreturn_t msm_dsi_isr_handler(int irq, void *ptr)
 		msm_dsi_error(dsi_host_private->dsi_base);
 	}
 
-	spin_lock(&ctrl->mdp_lock);
-
 	if (isr & DSI_INTR_VIDEO_DONE)
 		complete(&ctrl->video_comp);
 
 	if (isr & DSI_INTR_CMD_DMA_DONE)
 		complete(&ctrl->dma_comp);
+
+	if (isr & DSI_INTR_BTA_DONE)
+		complete(&ctrl->bta_comp);
+
+	if (isr & DSI_INTR_CMD_MDP_DONE)
+		complete(&ctrl->mdp_comp);
 
 	spin_unlock(&ctrl->mdp_lock);
 
@@ -236,6 +247,13 @@ int msm_dsi_irq_init(struct device *dev, int irq_no,
 			struct mdss_dsi_ctrl_pdata *ctrl)
 {
 	int ret;
+	u32 isr;
+
+	msm_dsi_ahb_ctrl(1);
+	isr = MIPI_INP(dsi_host_private->dsi_base + DSI_INT_CTRL);
+	isr &= ~DSI_INTR_ALL_MASK;
+	MIPI_OUTP(dsi_host_private->dsi_base + DSI_INT_CTRL, isr);
+	msm_dsi_ahb_ctrl(0);
 
 	ret = devm_request_irq(dev, irq_no, msm_dsi_isr_handler,
 				IRQF_DISABLED, "DSI", ctrl);
@@ -524,8 +542,11 @@ void msm_dsi_controller_cfg(int enable)
 	if (readl_poll_timeout((ctrl_base + DSI_STATUS),
 				status,
 				((status & 0x02) == 0),
-				DSI_POLL_SLEEP_US, DSI_POLL_TIMEOUT_US))
+				DSI_POLL_SLEEP_US, DSI_POLL_TIMEOUT_US)) {
 		pr_err("%s: DSI status=%x failed\n", __func__, status);
+		pr_err("%s: Doing sw reset\n", __func__);
+		msm_dsi_sw_reset();
+	}
 
 	/* Check for x_HS_FIFO_EMPTY */
 	if (readl_poll_timeout((ctrl_base + DSI_FIFO_STATUS),
@@ -935,17 +956,18 @@ void msm_dsi_cmdlist_rx(struct mdss_dsi_ctrl_pdata *ctrl,
 	if (req->cb)
 		req->cb(len);
 }
-void msm_dsi_cmdlist_commit(struct mdss_dsi_ctrl_pdata *ctrl, int from_mdp)
+int msm_dsi_cmdlist_commit(struct mdss_dsi_ctrl_pdata *ctrl, int from_mdp)
 {
 	struct dcs_cmd_req *req;
 	int dsi_on;
+	int ret = -EINVAL;
 
 	mutex_lock(&ctrl->mutex);
 	dsi_on = dsi_host_private->dsi_on;
 	mutex_unlock(&ctrl->mutex);
 	if (!dsi_on) {
 		pr_err("try to send DSI commands while dsi is off\n");
-		return;
+		return ret;
 	}
 
 	mutex_lock(&ctrl->cmd_mutex);
@@ -953,21 +975,26 @@ void msm_dsi_cmdlist_commit(struct mdss_dsi_ctrl_pdata *ctrl, int from_mdp)
 
 	if (!req) {
 		mutex_unlock(&ctrl->cmd_mutex);
-		return;
+		return ret;
 	}
 
 	msm_dsi_clk_ctrl(&ctrl->panel_data, 1);
-	dsi_set_tx_power_mode(0);
+
+	if (0 == (req->flags & CMD_REQ_LP_MODE))
+		dsi_set_tx_power_mode(0);
 
 	if (req->flags & CMD_REQ_RX)
 		msm_dsi_cmdlist_rx(ctrl, req);
 	else
 		msm_dsi_cmdlist_tx(ctrl, req);
 
-	dsi_set_tx_power_mode(1);
+	if (0 == (req->flags & CMD_REQ_LP_MODE))
+		dsi_set_tx_power_mode(1);
+
 	msm_dsi_clk_ctrl(&ctrl->panel_data, 0);
 
 	mutex_unlock(&ctrl->cmd_mutex);
+	return 0;
 }
 
 static int msm_dsi_cal_clk_rate(struct mdss_panel_data *pdata,
@@ -1207,6 +1234,13 @@ static int msm_dsi_cont_on(struct mdss_panel_data *pdata)
 		mutex_unlock(&ctrl_pdata->mutex);
 		return ret;
 	}
+	pinfo->panel_power_on = 1;
+	ret = mdss_dsi_panel_reset(pdata, 1);
+	if (ret) {
+		pr_err("%s: Panel reset failed\n", __func__);
+		mutex_unlock(&ctrl_pdata->mutex);
+		return ret;
+	}
 
 	msm_dsi_ahb_ctrl(1);
 	msm_dsi_prepare_clocks();
@@ -1218,7 +1252,7 @@ static int msm_dsi_cont_on(struct mdss_panel_data *pdata)
 	return 0;
 }
 
-static int msm_dsi_bta_status_check(struct mdss_dsi_ctrl_pdata *ctrl_pdata)
+int msm_dsi_bta_status_check(struct mdss_dsi_ctrl_pdata *ctrl_pdata)
 {
 	int ret = 0;
 
@@ -1305,6 +1339,21 @@ static int dsi_get_panel_cfg(char *panel_cfg)
 	return rc;
 }
 
+static struct device_node *dsi_pref_prim_panel(
+		struct platform_device *pdev)
+{
+	struct device_node *dsi_pan_node = NULL;
+
+	pr_debug("%s:%d: Select primary panel from dt\n",
+					__func__, __LINE__);
+	dsi_pan_node = of_parse_phandle(pdev->dev.of_node,
+					"qcom,dsi-pref-prim-pan", 0);
+	if (!dsi_pan_node)
+		pr_err("%s:can't find panel phandle\n", __func__);
+
+	return dsi_pan_node;
+}
+
 /**
  * dsi_find_panel_of_node(): find device node of dsi panel
  * @pdev: platform_device of the dsi ctrl node
@@ -1334,14 +1383,7 @@ static struct device_node *dsi_find_panel_of_node(
 		/* no panel cfg chg, parse dt */
 		pr_debug("%s:%d: no cmd line cfg present\n",
 			 __func__, __LINE__);
-		dsi_pan_node = of_parse_phandle(
-			pdev->dev.of_node,
-			"qcom,dsi-pref-prim-pan", 0);
-		if (!dsi_pan_node) {
-			pr_err("%s:can't find panel phandle\n",
-			       __func__);
-			return NULL;
-		}
+		dsi_pan_node = dsi_pref_prim_panel(pdev);
 	} else {
 		if (panel_cfg[0] != '0') {
 			pr_err("%s:%d:ctrl id=[%d] not supported\n",
@@ -1369,7 +1411,7 @@ static struct device_node *dsi_find_panel_of_node(
 		if (!dsi_pan_node) {
 			pr_err("%s: invalid pan node\n",
 			       __func__);
-			return NULL;
+			dsi_pan_node = dsi_pref_prim_panel(pdev);
 		}
 	}
 	return dsi_pan_node;
@@ -1486,14 +1528,6 @@ static int __devinit msm_dsi_probe(struct platform_device *pdev)
 							__func__, __LINE__);
 		rc = -ENODEV;
 		goto error_irq_resource;
-	} else {
-		rc = msm_dsi_irq_init(&pdev->dev, mdss_dsi_mres->start,
-					ctrl_pdata);
-		if (rc) {
-			dev_err(&pdev->dev, "%s: failed to init irq, rc=%d\n",
-								__func__, rc);
-			goto error_irq_resource;
-		}
 	}
 
 	rc = of_platform_populate(pdev->dev.of_node, NULL, NULL, &pdev->dev);
@@ -1555,6 +1589,14 @@ static int __devinit msm_dsi_probe(struct platform_device *pdev)
 	msm_dsi_debug_init();
 
 	msm_dsi_ctrl_init(ctrl_pdata);
+
+	rc = msm_dsi_irq_init(&pdev->dev, mdss_dsi_mres->start,
+					   ctrl_pdata);
+	if (rc) {
+		dev_err(&pdev->dev, "%s: failed to init irq, rc=%d\n",
+			__func__, rc);
+		goto error_device_register;
+	}
 
 	rc = dsi_panel_device_register_v2(pdev, ctrl_pdata);
 	if (rc) {
