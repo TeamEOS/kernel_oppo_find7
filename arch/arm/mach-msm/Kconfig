@@ -3098,6 +3098,7 @@ config KRAIT_REGULATOR
 # OPPO modifications
 config MACH_OPPO
 	bool
+	default y
 	depends on ARCH_MSM8974
 
 endif
