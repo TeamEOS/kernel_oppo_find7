@@ -1832,7 +1832,7 @@ static int i2c_qup_pm_resume_sys(struct device *device)
 	return 0;
 }
 #else
-static int qup_i2c_suspend(struct device *device)
+static int i2c_qup_pm_suspend_sys(struct device *device)
 {
 	if (!pm_runtime_enabled(device) || !pm_runtime_suspended(device)) {
 		dev_dbg(device, "system suspend");
@@ -1841,7 +1841,7 @@ static int qup_i2c_suspend(struct device *device)
 	return 0;
 }
 
-static int qup_i2c_resume(struct device *device)
+static int i2c_qup_pm_resume_sys(struct device *device)
 {
 	int ret = 0;
 	if (!pm_runtime_enabled(device) || !pm_runtime_suspended(device)) {
