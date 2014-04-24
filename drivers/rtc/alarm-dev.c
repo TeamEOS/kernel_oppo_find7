@@ -116,7 +116,9 @@ static long alarm_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
 #else
 		if ((alarm_type == ANDROID_ALARM_RTC_POWEROFF_WAKEUP)||\
 		(alarm_type == ANDROID_ALARM_RTC_POWERUP))
-			set_power_on_alarm(0);	
+			if (!copy_from_user(&new_alarm_time,
+				(void __user *)arg, sizeof(new_alarm_time)))
+				set_power_on_alarm(new_alarm_time.tv_sec, 0);	
 #endif
 /* OPPO 2013-11-19 yuyi modify begin for power up alarm */	
 		spin_unlock_irqrestore(&alarm_slock, flags);
@@ -157,7 +159,7 @@ from_old_alarm_set:
 		    (alarm_type == ANDROID_ALARM_RTC_POWERUP)) &&
 				(ANDROID_ALARM_BASE_CMD(cmd) ==
 				 ANDROID_ALARM_SET(0)))
-			set_power_on_alarm(new_alarm_time.tv_sec);
+			set_power_on_alarm(new_alarm_time.tv_sec, 1);
 #endif	
 /* OPPO 2013-11-19 yuyi modify begin for power up alarm */	
 		spin_unlock_irqrestore(&alarm_slock, flags);

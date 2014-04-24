@@ -15,6 +15,7 @@
 
 #include <linux/bitmap.h>
 #include <linux/errno.h>
+#include <linux/iopoll.h>
 #include <linux/mutex.h>
 
 #include "mdss_mdp.h"
@@ -24,6 +25,8 @@
 #define SMP_ENTRIES_PER_MB	(SMP_MB_SIZE / 16)
 #define SMP_MB_ENTRY_SIZE	16
 #define MAX_BPP 4
+
+#define PIPE_HALT_TIMEOUT_US	0x4000
 
 static DEFINE_MUTEX(mdss_mdp_sspp_lock);
 static DEFINE_MUTEX(mdss_mdp_smp_lock);
@@ -124,6 +127,26 @@ static void mdss_mdp_smp_mmb_free(unsigned long *smp, bool write)
 			      smp, SMP_MB_CNT);
 		bitmap_zero(smp, SMP_MB_CNT);
 	}
+}
+
+/**
+ * @mdss_mdp_smp_get_size - get allocated smp size for a pipe
+ * @pipe: pointer to a pipe
+ *
+ * Function counts number of blocks that are currently allocated for a
+ * pipe, then smp buffer size is number of blocks multiplied by block
+ * size.
+ */
+u32 mdss_mdp_smp_get_size(struct mdss_mdp_pipe *pipe)
+{
+	int i, mb_cnt = 0;
+
+	for (i = 0; i < MAX_PLANES; i++) {
+		mb_cnt += bitmap_weight(pipe->smp_map[i].allocated, SMP_MB_CNT);
+		mb_cnt += bitmap_weight(pipe->smp_map[i].fixed, SMP_MB_CNT);
+	}
+
+	return mb_cnt * SMP_MB_SIZE;
 }
 
 static void mdss_mdp_smp_set_wm_levels(struct mdss_mdp_pipe *pipe, int mb_cnt)
@@ -633,6 +656,64 @@ static int mdss_mdp_pipe_free(struct mdss_mdp_pipe *pipe)
 	return 0;
 }
 
+/**
+ * mdss_mdp_pipe_fetch_halt() - Halt VBIF client corresponding to specified pipe
+ * @pipe: pointer to the pipe data structure which needs to be halted.
+ *
+ * Check if VBIF client corresponding to specified pipe is idle or not. If not
+ * send a halt request for the client in question and wait for it be idle.
+ *
+ * This function would typically be called after pipe is unstaged or before it
+ * is initialized. On success it should be assumed that pipe is in idle state
+ * and would not fetch any more data. This function cannot be called from
+ * interrupt context.
+ */
+int mdss_mdp_pipe_fetch_halt(struct mdss_mdp_pipe *pipe)
+{
+	bool is_idle;
+	int rc = 0;
+	u32 reg_val, idle_mask, status;
+	struct mdss_data_type *mdata = mdss_mdp_get_mdata();
+
+	mdss_mdp_clk_ctrl(MDP_BLOCK_POWER_ON, false);
+
+	idle_mask = BIT(pipe->xin_id + 16);
+	reg_val = readl_relaxed(mdata->vbif_base + MMSS_VBIF_XIN_HALT_CTRL1);
+
+	is_idle = (reg_val & idle_mask) ? true : false;
+	if (!is_idle) {
+		pr_debug("%pS: pipe%d is not idle. xin_id=%d halt_ctrl1=0x%x\n",
+			__builtin_return_address(0), pipe->num, pipe->xin_id,
+			reg_val);
+
+		mutex_lock(&mdata->reg_lock);
+		reg_val = readl_relaxed(mdata->vbif_base +
+			MMSS_VBIF_XIN_HALT_CTRL0);
+		writel_relaxed(reg_val | BIT(pipe->xin_id),
+			mdata->vbif_base + MMSS_VBIF_XIN_HALT_CTRL0);
+		mutex_unlock(&mdata->reg_lock);
+
+		rc = readl_poll_timeout(mdata->vbif_base +
+			MMSS_VBIF_XIN_HALT_CTRL1, status, (status & idle_mask),
+			1000, PIPE_HALT_TIMEOUT_US);
+		if (rc == -ETIMEDOUT)
+			pr_err("VBIF client %d not halting. TIMEDOUT.\n",
+				pipe->xin_id);
+		else
+			pr_debug("VBIF client %d is halted\n", pipe->xin_id);
+
+		mutex_lock(&mdata->reg_lock);
+		reg_val = readl_relaxed(mdata->vbif_base +
+			MMSS_VBIF_XIN_HALT_CTRL0);
+		writel_relaxed(reg_val & ~BIT(pipe->xin_id),
+			mdata->vbif_base + MMSS_VBIF_XIN_HALT_CTRL0);
+		mutex_unlock(&mdata->reg_lock);
+	}
+	mdss_mdp_clk_ctrl(MDP_BLOCK_POWER_OFF, false);
+
+	return rc;
+}
+
 int mdss_mdp_pipe_destroy(struct mdss_mdp_pipe *pipe)
 {
 	int tmp;
@@ -709,26 +790,6 @@ int mdss_mdp_pipe_handoff(struct mdss_mdp_pipe *pipe)
 
 error:
 	return rc;
-}
-
-void mdss_mdp_crop_rect(struct mdss_mdp_img_rect *src_rect,
-	struct mdss_mdp_img_rect *dst_rect,
-	const struct mdss_mdp_img_rect *sci_rect)
-{
-	struct mdss_mdp_img_rect res;
-	mdss_mdp_intersect_rect(&res, dst_rect, sci_rect);
-
-	if (res.w && res.h) {
-		if ((res.w != dst_rect->w) || (res.h != dst_rect->h)) {
-			src_rect->x = src_rect->x + (res.x - dst_rect->x);
-			src_rect->y = src_rect->y + (res.y - dst_rect->y);
-			src_rect->w = res.w;
-			src_rect->h = res.h;
-		}
-		*dst_rect = (struct mdss_mdp_img_rect)
-			{(res.x - sci_rect->x), (res.y - sci_rect->y),
-			res.w, res.h};
-	}
 }
 
 static int mdss_mdp_image_setup(struct mdss_mdp_pipe *pipe,
@@ -898,8 +959,8 @@ static int mdss_mdp_format_setup(struct mdss_mdp_pipe *pipe)
 }
 
 int mdss_mdp_pipe_addr_setup(struct mdss_data_type *mdata,
-	struct mdss_mdp_pipe *head, u32 *offsets, u32 *ftch_id, u32 type,
-	u32 num_base, u32 len)
+	struct mdss_mdp_pipe *head, u32 *offsets, u32 *ftch_id, u32 *xin_id,
+	u32 type, u32 num_base, u32 len)
 {
 	u32 i;
 
@@ -911,6 +972,7 @@ int mdss_mdp_pipe_addr_setup(struct mdss_data_type *mdata,
 	for (i = 0; i < len; i++) {
 		head[i].type = type;
 		head[i].ftch_id  = ftch_id[i];
+		head[i].xin_id = xin_id[i];
 		head[i].num = i + num_base;
 		head[i].ndx = BIT(i + num_base);
 		head[i].base = mdata->mdp_base + offsets[i];

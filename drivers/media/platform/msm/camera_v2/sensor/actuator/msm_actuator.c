@@ -340,11 +340,7 @@ static int32_t msm_actuator_move_focus(
         a_ctrl->current_lens_pos = a_ctrl->step_position_table[a_ctrl->curr_step_pos];
 	}
 
-<<<<<<< HEAD
- 	move_params->curr_lens_pos = curr_lens_pos;
-=======
 	move_params->curr_lens_pos = curr_lens_pos;
->>>>>>> FETCH_HEAD
 	reg_setting.reg_setting = a_ctrl->i2c_reg_tbl;
 	reg_setting.data_type = a_ctrl->i2c_data_type;
 	reg_setting.size = a_ctrl->i2c_tbl_index;
@@ -678,15 +674,15 @@ static int32_t msm_actuator_config(struct msm_actuator_ctrl_t *a_ctrl,
 		if (rc < 0)
 			pr_err("actuator_set_position failed %d\n", rc);
 		break;
-<<<<<<< HEAD
 
+#ifdef CONFIG_MACH_OPPO
 	case CFG_ACTUATOR_POWERDOWN:
 		rc = msm_actuator_power_down(a_ctrl);
 		if (rc < 0)
 			pr_err("msm_actuator_power_down failed %d\n", rc);
 		break;
-=======
->>>>>>> FETCH_HEAD
+#endif
+
 	default:
 		break;
 	}

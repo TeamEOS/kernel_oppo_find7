@@ -1609,29 +1609,6 @@ int adm_get_lowlatency_copp_id(int port_index)
 }
 #endif /* #ifdef CONFIG_RTAC */
 
-int adm_get_lowlatency_copp_id(int port_index)
-{
-	pr_debug("%s\n", __func__);
-
-	if (port_index < 0) {
-		pr_err("%s: invalid port_id = %d\n", __func__, port_index);
-		return -EINVAL;
-	}
-
-	return atomic_read(&this_adm.copp_low_latency_id[port_index]);
-}
-#else
-int adm_get_copp_id(int port_index)
-{
-	return -EINVAL;
-}
-
-int adm_get_lowlatency_copp_id(int port_index)
-{
-	return -EINVAL;
-}
-#endif /* #ifdef CONFIG_RTAC */
-
 void adm_ec_ref_rx_id(int port_id)
 {
 	this_adm.ec_ref_rx = port_id;

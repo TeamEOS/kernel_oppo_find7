@@ -179,17 +179,6 @@ static inline u32 mdss_mdp_calc_latency_buf_bytes(struct mdss_mdp_prefill_params
 static inline u32 mdss_mdp_calc_scaling_w_h(u32 val, u32 src_h, u32 dst_h,
 	u32 src_w, u32 dst_w)
 {
-	struct mdss_mdp_ctl *ctl;
-	int cnum;
-	unsigned long clk_rate = 0;
-	u64 bus_ab_quota = 0, bus_ib_quota = 0;	
-#ifdef CONFIG_MACH_OPPO
-/* Xinqin.Yang@PhoneSW.Driver, 2014/02/11  Add for Find7S */
-    if (get_pcb_version() >= HW_VERSION__20) {
-	    bus_ab_quota = 3000000000UL;
-	    bus_ib_quota = 3000000000UL;
-    }
-#endif /*CONFIG_MACH_OPPO*/
 	if (dst_h)
 		val = mult_frac(val, src_h, dst_h);
 	if (dst_w)
@@ -326,8 +315,7 @@ static u32 mdss_mdp_perf_calc_pipe_prefill_cmd(struct mdss_mdp_prefill_params
  * (MDP clock requirement) based on frame size and scaling requirements.
  */
 int mdss_mdp_perf_calc_pipe(struct mdss_mdp_pipe *pipe,
-	struct mdss_mdp_perf_params *perf, struct mdss_mdp_img_rect *roi,
-	bool apply_fudge)
+	struct mdss_mdp_perf_params *perf, struct mdss_mdp_img_rect *roi)
 {
 	struct mdss_mdp_mixer *mixer;
 	int fps = DEFAULT_FRAME_RATE;
@@ -401,10 +389,7 @@ int mdss_mdp_perf_calc_pipe(struct mdss_mdp_pipe *pipe,
 		perf->bw_overlap = (quota / dst.h) * v_total;
 	}
 
-	if (apply_fudge)
-		perf->mdp_clk_rate = mdss_mdp_clk_fudge_factor(mixer, rate);
-	else
-		perf->mdp_clk_rate = rate;
+	perf->mdp_clk_rate = mdss_mdp_clk_fudge_factor(mixer, rate);
 
 	prefill_params.smp_bytes = mdss_mdp_smp_get_size(pipe);
 	prefill_params.xres = xres;
@@ -519,8 +504,7 @@ static void mdss_mdp_perf_calc_mixer(struct mdss_mdp_mixer *mixer,
 		if (pipe == NULL)
 			continue;
 
-		if (mdss_mdp_perf_calc_pipe(pipe, &tmp, &mixer->roi,
-			apply_fudge))
+		if (mdss_mdp_perf_calc_pipe(pipe, &tmp, &mixer->roi))
 			continue;
 		prefill_bytes += tmp.prefill_bytes;
 		bw_overlap[i] = tmp.bw_overlap;
@@ -1178,8 +1162,6 @@ int mdss_mdp_wb_mixer_destroy(struct mdss_mdp_mixer *mixer)
 	return 0;
 }
 
-#ifdef CONFIG_MACH_OPPO
-/* Xinqin.Yang@PhoneSW.Driver, 2014/02/26  Add for continous display */
 static inline struct mdss_mdp_ctl *mdss_mdp_get_split_ctl(
        struct mdss_mdp_ctl *ctl)
 {
@@ -1188,8 +1170,6 @@ static inline struct mdss_mdp_ctl *mdss_mdp_get_split_ctl(
 
     return NULL;
 }
-
-#endif /*CONFIG_MACH_OPPO*/
 
 int mdss_mdp_ctl_splash_finish(struct mdss_mdp_ctl *ctl, bool handoff)
 {

@@ -34,8 +34,8 @@
 /* OPPO 2013-11-20 yxq Add begin for compatible cmd mode and video mode */
 #define COMMAND_MODE_ENABLE
 /* OPPO 2013-11-20 yxq Add end */
-static unsigned char *mdss_dsi_base;
 #endif
+static unsigned char *mdss_dsi_base;
 
 static int mdss_dsi_regulator_init(struct platform_device *pdev)
 {
@@ -82,6 +82,7 @@ static int mdss_dsi_panel_power_on(struct mdss_panel_data *pdata, int enable)
 			goto error;
 		}
 
+#ifndef CONFIG_MACH_OPPO
 		if (!pdata->panel_info.mipi.lp11_init) {
 			ret = mdss_dsi_panel_reset(pdata, 1);
 			if (ret) {
@@ -101,6 +102,15 @@ static int mdss_dsi_panel_power_on(struct mdss_panel_data *pdata, int enable)
 					__func__, ret);
 			goto error;
 		}
+#else
+		if (pdata->panel_info.panel_power_on == 0)
+			mdss_dsi_panel_reset(pdata, 1);
+
+	} else {
+
+		mdss_dsi_panel_reset(pdata, 0);
+#endif
+
 		ret = msm_dss_enable_vreg(
 			ctrl_pdata->power_data.vreg_config,
 			ctrl_pdata->power_data.num_vreg, 0);
@@ -1140,6 +1150,7 @@ static int get_pannel_product(void)
 #endif
 //yanghai modify end
 
+#ifndef CONFIG_MACH_OPPO
 static struct device_node *mdss_dsi_pref_prim_panel(
 		struct platform_device *pdev)
 {
@@ -1154,6 +1165,7 @@ static struct device_node *mdss_dsi_pref_prim_panel(
 
 	return dsi_pan_node;
 }
+#endif
 
 /**
  * mdss_dsi_find_panel_of_node(): find device node of dsi panel
@@ -1169,95 +1181,39 @@ static struct device_node *mdss_dsi_pref_prim_panel(
  *
  * returns pointer to panel node on success, NULL on error.
  */
+ #ifndef CONFIG_MACH_OPPO
 static struct device_node *mdss_dsi_find_panel_of_node(
 		struct platform_device *pdev, char *panel_cfg)
 {
-	int len, i;
-	int ctrl_id = pdev->id - 1;
-	char panel_name[MDSS_MAX_PANEL_LEN];
-	char ctrl_id_stream[3] =  "0:";
-	char *stream = NULL, *pan = NULL;
+	int l;
+	int ctrl_id = -1;
+	char *panel_name;
 	struct device_node *dsi_pan_node = NULL, *mdss_node = NULL;
-/* OPPO 2013-11-05 yxq Add begin for compatible with truly panel */
-    int rc = 0;
-/* OPPO 2013-11-05 yxq Add end */
 
-#ifdef CONFIG_MACH_OPPO
 	l = strlen(panel_cfg);
-/* Xinqin.Yang@PhoneSW.Driver, 2014/02/10  Add for Find7s */
-    if (get_pcb_version() >= HW_VERSION__20) {
-        l = 0;
-    }
-#endif /*CONFIG_MACH_OPPO*/
 	if (!l) {
 		/* no panel cfg chg, parse dt */
 		pr_debug("%s:%d: no cmd line cfg present\n",
 			 __func__, __LINE__);
-/* OPPO 2013-11-06 yxq Modify begin for compatible with truly panel */
-#ifndef CONFIG_MACH_OPPO
-		dsi_pan_node = of_parse_phandle(
-			pdev->dev.of_node,
-			"qcom,dsi-pref-prim-pan", 0);
-#else
-        if (get_pcb_version() < HW_VERSION__20) { /* For Find7 */
-            rc = get_pannel_product();
-            pr_err("%s yxq rc=%d\n", __func__, rc);
-            if (rc == 0) {
-/* OPPO 2013-11-20 yxq Modify begin for reason */
-#ifndef COMMAND_MODE_ENABLE
-                dsi_pan_node = of_parse_phandle(
-                    pdev->dev.of_node,
-                    "qcom,dsi-pref-jdi-video-pan", 0);
-#else
-                dsi_pan_node = of_parse_phandle(
-                    pdev->dev.of_node,
-                    "qcom,dsi-pref-jdi-cmd-pan", 0);
-#endif
-/* OPPO 2013-11-20 yxq Modify end */
-            } else {
-                dsi_pan_node = of_parse_phandle(
-                    pdev->dev.of_node,
-                    "qcom,dsi-pref-truly-pan", 0);
-            }
-        } else { /* For Find7S */
-            dsi_pan_node = of_parse_phandle(
-                pdev->dev.of_node,
-                "qcom,dsi-pref-find7s-jdi-pan", 0);
-        }
-		if (!dsi_pan_node) {
-			pr_err("%s:can't find panel phandle\n",
-			       __func__);
+		dsi_pan_node = mdss_dsi_pref_prim_panel(pdev);
+	} else {
+		if (panel_cfg[0] == '0') {
+			pr_debug("%s:%d: DSI ctrl 1\n", __func__, __LINE__);
+			ctrl_id = 0;
+		} else if (panel_cfg[0] == '1') {
+			pr_debug("%s:%d: DSI ctrl 2\n", __func__, __LINE__);
+			ctrl_id = 1;
+		}
+		if ((pdev->id - 1) != ctrl_id) {
+			pr_err("%s:%d:pdev_ID=[%d]\n",
+			       __func__, __LINE__, pdev->id);
 			return NULL;
 		}
-#else
-	len = strlen(panel_cfg);
-	if (!len) {
-		/* no panel cfg chg, parse dt */
-		pr_debug("%s:%d: no cmd line cfg present\n",
-			 __func__, __LINE__);
-		goto end;
-#endif
-/* OPPO 2013-11-06 yxq Modify end */
-	} else {
-		if (ctrl_id == 1)
-			strlcpy(ctrl_id_stream, "1:", 3);
-
-		stream = strnstr(panel_cfg, ctrl_id_stream, len);
-		if (!stream) {
-			pr_err("controller config is not present\n");
-			goto end;
-		}
-		stream += 2;
-
-		pan = strnchr(stream, strlen(stream), ':');
-		if (!pan) {
-			strlcpy(panel_name, stream, MDSS_MAX_PANEL_LEN);
-		} else {
-			for (i = 0; (stream + i) < pan; i++)
-				panel_name[i] = *(stream + i);
-			panel_name[i] = 0;
-		}
-
+		/*
+		 * skip first two chars '<dsi_ctrl_id>' and
+		 * ':' to get to the panel name
+		 */
+		panel_name = panel_cfg + 2;
 		pr_debug("%s:%d:%s:%s\n", __func__, __LINE__,
 			 panel_cfg, panel_name);
 
@@ -1274,15 +1230,98 @@ static struct device_node *mdss_dsi_find_panel_of_node(
 		if (!dsi_pan_node) {
 			pr_err("%s: invalid pan node, selecting prim panel\n",
 			       __func__);
-			goto end;
+			dsi_pan_node = mdss_dsi_pref_prim_panel(pdev);
 		}
-		return dsi_pan_node;
 	}
-end:
-	dsi_pan_node = mdss_dsi_pref_prim_panel(pdev);
 
 	return dsi_pan_node;
 }
+#else
+static struct device_node *mdss_dsi_find_panel_of_node(
+		struct platform_device *pdev, char *panel_cfg)
+{
+	int l;
+	int ctrl_id = -1;
+	char *panel_name;
+	struct device_node *dsi_pan_node = NULL, *mdss_node = NULL;
+    int rc = 0;
+
+	l = strlen(panel_cfg);
+    if (get_pcb_version() >= HW_VERSION__20) {
+        l = 0;
+    }
+	if (!l) {
+		/* no panel cfg chg, parse dt */
+		pr_debug("%s:%d: no cmd line cfg present\n",
+			 __func__, __LINE__);
+        if (get_pcb_version() < HW_VERSION__20) { /* For Find7 */
+            rc = get_pannel_product();
+            pr_err("%s yxq rc=%d\n", __func__, rc);
+            if (rc == 0) {
+#ifndef COMMAND_MODE_ENABLE
+                dsi_pan_node = of_parse_phandle(
+                    pdev->dev.of_node,
+                    "qcom,dsi-pref-jdi-video-pan", 0);
+#else
+                dsi_pan_node = of_parse_phandle(
+                    pdev->dev.of_node,
+                    "qcom,dsi-pref-jdi-cmd-pan", 0);
+#endif
+            } else {
+                dsi_pan_node = of_parse_phandle(
+                    pdev->dev.of_node,
+                    "qcom,dsi-pref-truly-pan", 0);
+            }
+        } else { /* For Find7S */
+            dsi_pan_node = of_parse_phandle(
+                pdev->dev.of_node,
+                "qcom,dsi-pref-find7s-jdi-pan", 0);
+        }
+		if (!dsi_pan_node) {
+			pr_err("%s:can't find panel phandle\n",
+			       __func__);
+			return NULL;
+		}
+	} else {
+		if (panel_cfg[0] == '0') {
+			pr_debug("%s:%d: DSI ctrl 1\n", __func__, __LINE__);
+			ctrl_id = 0;
+		} else if (panel_cfg[0] == '1') {
+			pr_debug("%s:%d: DSI ctrl 2\n", __func__, __LINE__);
+			ctrl_id = 1;
+		}
+		if ((pdev->id - 1) != ctrl_id) {
+			pr_err("%s:%d:pdev_ID=[%d]\n",
+			       __func__, __LINE__, pdev->id);
+			return NULL;
+		}
+		/*
+		 * skip first two chars '<dsi_ctrl_id>' and
+		 * ':' to get to the panel name
+		 */
+		panel_name = panel_cfg + 2;
+		pr_debug("%s:%d:%s:%s\n", __func__, __LINE__,
+			 panel_cfg, panel_name);
+
+		mdss_node = of_parse_phandle(pdev->dev.of_node,
+					     "qcom,mdss-mdp", 0);
+
+		if (!mdss_node) {
+			pr_err("%s: %d: mdss_node null\n",
+			       __func__, __LINE__);
+			return NULL;
+		}
+		dsi_pan_node = of_find_node_by_name(mdss_node,
+						    panel_name);
+		if (!dsi_pan_node) {
+			pr_err("%s: invalid pan node\n",
+			       __func__);
+			return NULL;
+		}
+	}
+	return dsi_pan_node;
+}
+#endif
 
 static int __devinit mdss_dsi_ctrl_probe(struct platform_device *pdev)
 {
@@ -1291,6 +1330,7 @@ static int __devinit mdss_dsi_ctrl_probe(struct platform_device *pdev)
 	struct mdss_dsi_ctrl_pdata *ctrl_pdata = NULL;
 	struct device_node *dsi_pan_node = NULL;
 	char panel_cfg[MDSS_MAX_PANEL_LEN];
+	struct resource *mdss_dsi_mres;
 	const char *ctrl_name;
 	bool cmd_cfg_cont_splash = true;
 
@@ -1339,6 +1379,23 @@ static int __devinit mdss_dsi_ctrl_probe(struct platform_device *pdev)
 		pdev->id = 1;
 	else
 		pdev->id = 2;
+		
+	mdss_dsi_mres = platform_get_resource(pdev, IORESOURCE_MEM, 0);
+	if (!mdss_dsi_mres) {
+		pr_err("%s:%d unable to get the MDSS resources",
+		       __func__, __LINE__);
+		rc = -ENOMEM;
+		goto error_no_mem;
+	}
+
+	mdss_dsi_base = ioremap(mdss_dsi_mres->start,
+				resource_size(mdss_dsi_mres));
+	if (!mdss_dsi_base) {
+		pr_err("%s:%d unable to remap dsi resources",
+		       __func__, __LINE__);
+		rc = -ENOMEM;
+		goto error_no_mem;
+	}
 
 	rc = of_platform_populate(pdev->dev.of_node,
 				  NULL, NULL, &pdev->dev);
@@ -1346,7 +1403,7 @@ static int __devinit mdss_dsi_ctrl_probe(struct platform_device *pdev)
 		dev_err(&pdev->dev,
 			"%s: failed to add child nodes, rc=%d\n",
 			__func__, rc);
-		goto error_no_mem;
+		goto error_ioremap;
 	}
 
 	/* Parse the regulator information */
@@ -1393,6 +1450,8 @@ error_pan_node:
 	of_node_put(dsi_pan_node);
 error_vreg:
 	mdss_dsi_put_dt_vreg_data(&pdev->dev, &ctrl_pdata->power_data);
+error_ioremap:
+	iounmap(mdss_dsi_base);
 error_no_mem:
 	devm_kfree(&pdev->dev, ctrl_pdata);
 
@@ -1415,9 +1474,7 @@ static int __devexit mdss_dsi_ctrl_remove(struct platform_device *pdev)
 		pr_err("%s: failed to de-init vregs\n", __func__);
 	mdss_dsi_put_dt_vreg_data(&pdev->dev, &ctrl_pdata->power_data);
 	mfd = platform_get_drvdata(pdev);
-	msm_dss_iounmap(&ctrl_pdata->mmss_misc_io);
-	msm_dss_iounmap(&ctrl_pdata->phy_io);
-	msm_dss_iounmap(&ctrl_pdata->ctrl_io);
+	iounmap(mdss_dsi_base);
 	return 0;
 }
 
@@ -1428,6 +1485,7 @@ int mdss_dsi_retrieve_ctrl_resources(struct platform_device *pdev, int mode,
 {
 	int rc = 0;
 	u32 index;
+	struct resource *mdss_dsi_mres;
 
 	rc = of_property_read_u32(pdev->dev.of_node, "cell-index", &index);
 	if (rc) {
@@ -1455,33 +1513,25 @@ int mdss_dsi_retrieve_ctrl_resources(struct platform_device *pdev, int mode,
 		return -EPERM;
 	}
 
-	rc = msm_dss_ioremap_byname(pdev, &ctrl->ctrl_io, "dsi_ctrl");
-	if (rc) {
-		pr_err("%s:%d unable to remap dsi ctrl resources",
+	mdss_dsi_mres = platform_get_resource(pdev, IORESOURCE_MEM, 0);
+	if (!mdss_dsi_mres) {
+		pr_err("%s:%d unable to get the DSI ctrl resources",
 			       __func__, __LINE__);
-		return rc;
+		return -ENOMEM;
 	}
 
-	ctrl->ctrl_base = ctrl->ctrl_io.base;
-	ctrl->reg_size = ctrl->ctrl_io.len;
-
-	rc = msm_dss_ioremap_byname(pdev, &ctrl->phy_io, "dsi_phy");
-	if (rc) {
-		pr_err("%s:%d unable to remap dsi phy resources",
+	ctrl->ctrl_base = ioremap(mdss_dsi_mres->start,
+		resource_size(mdss_dsi_mres));
+	if (!(ctrl->ctrl_base)) {
+		pr_err("%s:%d unable to remap dsi resources",
 			       __func__, __LINE__);
-		return rc;
+		return -ENOMEM;
 	}
 
-	pr_info("%s: ctrl_base=%p ctrl_size=%x phy_base=%p phy_size=%x\n",
-		__func__, ctrl->ctrl_base, ctrl->reg_size, ctrl->phy_io.base,
-		ctrl->phy_io.len);
+	ctrl->reg_size = resource_size(mdss_dsi_mres);
 
-	rc = msm_dss_ioremap_byname(pdev, &ctrl->mmss_misc_io,
-		"mmss_misc_phys");
-	if (rc) {
-		pr_debug("%s:%d mmss_misc IO remap failed\n",
-			__func__, __LINE__);
-	}
+	pr_info("%s: dsi base=%x size=%x\n",
+		__func__, (int)ctrl->ctrl_base, ctrl->reg_size);
 
 	return 0;
 }
@@ -1883,6 +1933,9 @@ module_init(mdss_dsi_driver_init);
 
 static void __exit mdss_dsi_driver_cleanup(void)
 {
+#ifdef CONFIG_MACH_OPPO
+	iounmap(mdss_dsi_base);
+#endif
 	platform_driver_unregister(&mdss_dsi_ctrl_driver);
 }
 module_exit(mdss_dsi_driver_cleanup);
