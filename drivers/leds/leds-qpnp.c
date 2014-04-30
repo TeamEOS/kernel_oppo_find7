@@ -1224,11 +1224,24 @@ error_flash_set:
 	return rc;
 }
 
+/*OPPO yuyi 2014-03-22 add begin for delay button_backlight*/
+#ifdef CONFIG_MACH_OPPO
+extern int button_backlight;
+#endif
+/*OPPO yuyi 2014-03-22 add end for delay button_backlight*/
+
 static int qpnp_kpdbl_set(struct qpnp_led_data *led)
 {
 	int duty_us;
 	int rc;
-
+/*OPPO yuyi 2014-03-22 add begin for delay button_backlight*/
+#ifdef CONFIG_MACH_OPPO
+	if(button_backlight == 1 ) {
+		msleep(600);
+		button_backlight ++;
+	}
+#endif
+/*OPPO yuyi 2014-03-22 add end for delay button_backlight*/	
 	if (led->cdev.brightness) {
 		if (!led->kpdbl_cfg->pwm_cfg->blinking)
 			led->kpdbl_cfg->pwm_cfg->mode =
@@ -3576,4 +3589,3 @@ module_exit(qpnp_led_exit);
 MODULE_DESCRIPTION("QPNP LEDs driver");
 MODULE_LICENSE("GPL v2");
 MODULE_ALIAS("leds:leds-qpnp");
-
