@@ -182,7 +182,6 @@ struct msm_vidc_core_capability {
 	u32 pixelprocess_capabilities;
 	struct hal_capability_supported scale_x;
 	struct hal_capability_supported scale_y;
-	struct hal_capability_supported hier_p;
 	u32 capability_set;
 	enum buffer_mode_type buffer_mode[MAX_PORT_NUM];
 };
@@ -221,7 +220,7 @@ struct msm_vidc_inst {
 	void *mem_client;
 	struct v4l2_ctrl_handler ctrl_handler;
 	struct completion completions[SESSION_MSG_END - SESSION_MSG_START + 1];
-	struct v4l2_ctrl **cluster;
+	struct list_head ctrl_clusters;
 	struct v4l2_fh event_handler;
 	struct msm_smem *extradata_handle;
 	wait_queue_head_t kernel_event_queue;
@@ -240,7 +239,6 @@ struct msm_vidc_inst {
 	struct list_head registered_bufs;
 	bool map_output_buffer;
 	atomic_t get_seq_hdr_cnt;
-	struct v4l2_ctrl **ctrls;
 };
 
 extern struct msm_vidc_drv *vidc_driver;
@@ -260,6 +258,8 @@ struct msm_vidc_ctrl {
 	u32 step;
 	u32 menu_skip_mask;
 	const char * const *qmenu;
+	u32 cluster;
+	struct v4l2_ctrl *priv;
 };
 
 void handle_cmd_response(enum command_response cmd, void *data);
