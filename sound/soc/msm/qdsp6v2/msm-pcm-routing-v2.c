@@ -430,7 +430,8 @@ void msm_pcm_routing_reg_phy_stream(int fedai_id, int perf_mode,
 				path_type,
 				msm_bedais[i].sample_rate,
 				msm_bedais[i].channel,
-				topology, false,
+				topology,
+				test_bit(fedai_id, &msm_bedais[i].perf_mode),
 				bits_per_sample);
 
 			payload.copp_ids[payload.num_copps++] =
@@ -564,6 +565,7 @@ static void msm_pcm_routing_process_audio(u16 reg, u16 val, int set)
 			    msm_bedais[reg].port_id == VOICE_RECORD_TX)
 				topology = DEFAULT_COPP_TOPOLOGY;
 
+			perf_mode = test_bit(val, &msm_bedais[reg].perf_mode);
 			if ((session_type == SESSION_TYPE_RX) &&
 				(channels > 0)) {
 				adm_multi_ch_copp_open(msm_bedais[reg].port_id,
@@ -577,7 +579,7 @@ static void msm_pcm_routing_process_audio(u16 reg, u16 val, int set)
 				adm_open(msm_bedais[reg].port_id,
 				path_type,
 				msm_bedais[reg].sample_rate, channels,
-				topology, false, bits_per_sample);
+				topology, perf_mode, bits_per_sample);
 
 			msm_pcm_routing_build_matrix(val,
 				fe_dai_map[val][session_type], path_type,
@@ -3961,6 +3963,7 @@ static int msm_pcm_routing_prepare(struct snd_pcm_substream *substream)
 			    bedai->port_id == VOICE_RECORD_TX)
 				topology = DEFAULT_COPP_TOPOLOGY;
 
+			perf_mode = test_bit(i, &(bedai->perf_mode));
 			if ((playback) && (channels > 0)) {
 				adm_multi_ch_copp_open(bedai->port_id,
 					path_type,
@@ -3974,7 +3977,8 @@ static int msm_pcm_routing_prepare(struct snd_pcm_substream *substream)
 				path_type,
 				bedai->sample_rate,
 				channels,
-				topology, false,
+				topology,
+				perf_mode,
 				bits_per_sample);
 			}
 
