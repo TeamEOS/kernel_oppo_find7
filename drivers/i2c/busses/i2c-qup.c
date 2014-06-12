@@ -1861,8 +1861,13 @@ static int qup_i2c_resume(struct device *device)
 
 static const struct dev_pm_ops i2c_qup_dev_pm_ops = {
 	SET_SYSTEM_SLEEP_PM_OPS(
+#ifndef CONFIG_MACH_OPPO
 		i2c_qup_pm_suspend_sys,
 		i2c_qup_pm_resume_sys
+#else
+		qup_i2c_suspend,
+		qup_i2c_resume
+#endif
 	)
 	SET_RUNTIME_PM_OPS(
 		i2c_qup_pm_suspend_runtime,
@@ -1902,4 +1907,3 @@ static void __exit qup_i2c_exit_driver(void)
 	platform_driver_unregister(&qup_i2c_driver);
 }
 module_exit(qup_i2c_exit_driver);
-
