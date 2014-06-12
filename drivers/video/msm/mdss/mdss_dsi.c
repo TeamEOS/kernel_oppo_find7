@@ -948,12 +948,12 @@ static struct device_node *mdss_dsi_find_panel_of_node(
 /* OPPO 2013-11-05 yxq Add end */
 
 #ifdef CONFIG_MACH_OPPO
-	l = strlen(panel_cfg);
+	len = strlen(panel_cfg);
 /* Xinqin.Yang@PhoneSW.Driver, 2014/02/10  Add for Find7s */
     if (get_pcb_version() >= HW_VERSION__20) {
-        l = 0;
+        len = 0;
     }
-	if (!l) {
+	if (!len) {
 		/* no panel cfg chg, parse dt */
 		pr_debug("%s:%d: no cmd line cfg present\n",
 			 __func__, __LINE__);
