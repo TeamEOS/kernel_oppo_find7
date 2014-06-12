@@ -25,7 +25,7 @@
 #ifndef VIDEO_MAX_FRAME
 #define VIDEO_MAX_FRAME 6
 #endif
-*
+hack end*/
 #define MAX_NUM_OUTPUT_BUFFERS VIDEO_MAX_FRAME
 #define DEFAULT_CONCEAL_COLOR 0x0
 
