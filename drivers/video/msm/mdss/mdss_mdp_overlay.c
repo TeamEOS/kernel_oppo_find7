@@ -2490,102 +2490,6 @@ int mdss_panel_register_done(struct mdss_panel_data *pdata)
 	return 0;
 }
 
-<<<<<<< HEAD
-/**
- * mdss_mdp_overlay_handoff() - Read MDP registers to handoff an active ctl path
- * @mfd: Msm frame buffer structure associated with the fb device.
- *
- * This function populates the MDP software structures with the current state of
- * the MDP hardware to handoff any active control path for the framebuffer
- * device. This is needed to identify any ctl, mixers and pipes being set up by
- * the bootloader to display the splash screen when the continuous splash screen
- * feature is enabled in kernel.
- */
-static int mdss_mdp_overlay_handoff(struct msm_fb_data_type *mfd)
-{
-	int rc = 0;
-	struct mdss_data_type *mdata = mfd_to_mdata(mfd);
-	struct mdss_overlay_private *mdp5_data = mfd_to_mdp5_data(mfd);
-	int i, j;
-	u32 reg;
-	struct mdss_mdp_pipe *pipe = NULL;
-	struct mdss_mdp_ctl *ctl = NULL;
-
-	if (!mdp5_data->ctl) {
-		ctl = __mdss_mdp_overlay_ctl_init(mfd);
-		if (IS_ERR_OR_NULL(ctl)) {
-			rc = PTR_ERR(ctl);
-			goto error;
-		}
-		mdp5_data->ctl = ctl;
-	}
-
-	/*
-	 * vsync interrupt needs on during continuous splash, this is
-	 * to initialize necessary ctl members here.
-	 */
-	rc = mdss_mdp_ctl_start(ctl, true);
-	if (rc) {
-		pr_err("Failed to initialize ctl\n");
-		goto error;
-	}
-
-	ctl->clk_rate = mdss_mdp_get_clk_rate(MDSS_CLK_MDP_SRC);
-	pr_debug("Set the ctl clock rate to %d Hz\n", ctl->clk_rate);
-
-	for (i = 0; i < mdata->nmixers_intf; i++) {
-		reg = mdss_mdp_ctl_read(ctl, MDSS_MDP_REG_CTL_LAYER(i));
-		pr_debug("for lm%d reg = 0x%09x\n", i, reg);
-		for (j = MDSS_MDP_SSPP_VIG0; j < MDSS_MDP_MAX_SSPP; j++) {
-			u32 cfg = j * 3;
-			if ((j == MDSS_MDP_SSPP_VIG3) ||
-				(j == MDSS_MDP_SSPP_RGB3)) {
-				/* Add 2 to account for Cursor & Border bits */
-				cfg += 2;
-			}
-			if (reg & (0x7 << cfg)) {
-				pr_debug("Pipe %d staged\n", j);
-				pipe = mdss_mdp_pipe_search(mdata, BIT(j));
-				if (!pipe) {
-					pr_warn("Invalid pipe %d staged\n", j);
-					continue;
-				}
-
-				rc = mdss_mdp_pipe_handoff(pipe);
-				if (rc) {
-					pr_err("Failed to handoff pipe num %d\n"
-						, pipe->num);
-					goto error;
-				}
-
-				rc = mdss_mdp_mixer_handoff(ctl, i, pipe);
-				if (rc) {
-					pr_err("failed to handoff mixer num %d\n"
-						, i);
-					goto error;
-				}
-			}
-		}
-	}
-
-	rc = mdss_mdp_smp_handoff(mdata);
-	if (rc)
-		pr_err("Failed to handoff smps\n");
-
-	mdp5_data->handoff = true;
-
-error:
-	if (rc && ctl) {
-		__mdss_mdp_handoff_cleanup_pipes(mfd, MDSS_MDP_PIPE_TYPE_RGB);
-		__mdss_mdp_handoff_cleanup_pipes(mfd, MDSS_MDP_PIPE_TYPE_VIG);
-		__mdss_mdp_handoff_cleanup_pipes(mfd, MDSS_MDP_PIPE_TYPE_DMA);
-		mdss_mdp_ctl_destroy(ctl);
-		mdp5_data->ctl = NULL;
-		mdp5_data->handoff = false;
-	}
-
-	return rc;
-=======
 static void __vsync_retire_handle_vsync(struct mdss_mdp_ctl *ctl, ktime_t t)
 {
 	struct msm_fb_data_type *mfd = ctl->mfd;
@@ -2685,7 +2589,102 @@ static int __vsync_retire_setup(struct msm_fb_data_type *mfd)
 	INIT_WORK(&mdp5_data->retire_work, __vsync_retire_work_handler);
 
 	return 0;
->>>>>>> 5427284... msm: mdss: create new vsync timeline for retire fences
+}
+
+/**
+ * mdss_mdp_overlay_handoff() - Read MDP registers to handoff an active ctl path
+ * @mfd: Msm frame buffer structure associated with the fb device.
+ *
+ * This function populates the MDP software structures with the current state of
+ * the MDP hardware to handoff any active control path for the framebuffer
+ * device. This is needed to identify any ctl, mixers and pipes being set up by
+ * the bootloader to display the splash screen when the continuous splash screen
+ * feature is enabled in kernel.
+ */
+static int mdss_mdp_overlay_handoff(struct msm_fb_data_type *mfd)
+{
+	int rc = 0;
+	struct mdss_data_type *mdata = mfd_to_mdata(mfd);
+	struct mdss_overlay_private *mdp5_data = mfd_to_mdp5_data(mfd);
+	int i, j;
+	u32 reg;
+	struct mdss_mdp_pipe *pipe = NULL;
+	struct mdss_mdp_ctl *ctl = NULL;
+
+	if (!mdp5_data->ctl) {
+		ctl = __mdss_mdp_overlay_ctl_init(mfd);
+		if (IS_ERR_OR_NULL(ctl)) {
+			rc = PTR_ERR(ctl);
+			goto error;
+		}
+		mdp5_data->ctl = ctl;
+	}
+
+	/*
+	 * vsync interrupt needs on during continuous splash, this is
+	 * to initialize necessary ctl members here.
+	 */
+	rc = mdss_mdp_ctl_start(ctl, true);
+	if (rc) {
+		pr_err("Failed to initialize ctl\n");
+		goto error;
+	}
+
+	ctl->clk_rate = mdss_mdp_get_clk_rate(MDSS_CLK_MDP_SRC);
+	pr_debug("Set the ctl clock rate to %d Hz\n", ctl->clk_rate);
+
+	for (i = 0; i < mdata->nmixers_intf; i++) {
+		reg = mdss_mdp_ctl_read(ctl, MDSS_MDP_REG_CTL_LAYER(i));
+		pr_debug("for lm%d reg = 0x%09x\n", i, reg);
+		for (j = MDSS_MDP_SSPP_VIG0; j < MDSS_MDP_MAX_SSPP; j++) {
+			u32 cfg = j * 3;
+			if ((j == MDSS_MDP_SSPP_VIG3) ||
+				(j == MDSS_MDP_SSPP_RGB3)) {
+				/* Add 2 to account for Cursor & Border bits */
+				cfg += 2;
+			}
+			if (reg & (0x7 << cfg)) {
+				pr_debug("Pipe %d staged\n", j);
+				pipe = mdss_mdp_pipe_search(mdata, BIT(j));
+				if (!pipe) {
+					pr_warn("Invalid pipe %d staged\n", j);
+					continue;
+				}
+
+				rc = mdss_mdp_pipe_handoff(pipe);
+				if (rc) {
+					pr_err("Failed to handoff pipe num %d\n"
+						, pipe->num);
+					goto error;
+				}
+
+				rc = mdss_mdp_mixer_handoff(ctl, i, pipe);
+				if (rc) {
+					pr_err("failed to handoff mixer num %d\n"
+						, i);
+					goto error;
+				}
+			}
+		}
+	}
+
+	rc = mdss_mdp_smp_handoff(mdata);
+	if (rc)
+		pr_err("Failed to handoff smps\n");
+
+	mdp5_data->handoff = true;
+
+error:
+	if (rc && ctl) {
+		__mdss_mdp_handoff_cleanup_pipes(mfd, MDSS_MDP_PIPE_TYPE_RGB);
+		__mdss_mdp_handoff_cleanup_pipes(mfd, MDSS_MDP_PIPE_TYPE_VIG);
+		__mdss_mdp_handoff_cleanup_pipes(mfd, MDSS_MDP_PIPE_TYPE_DMA);
+		mdss_mdp_ctl_destroy(ctl);
+		mdp5_data->ctl = NULL;
+		mdp5_data->handoff = false;
+	}
+
+	return rc;
 }
 
 int mdss_mdp_overlay_init(struct msm_fb_data_type *mfd)
