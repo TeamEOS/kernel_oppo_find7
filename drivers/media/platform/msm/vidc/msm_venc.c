@@ -692,6 +692,7 @@ static struct msm_vidc_ctrl msm_venc_ctrls[] = {
 		.maximum = BITSTREAM_RESTRICT_ENABLED,
 		.default_value = BITSTREAM_RESTRICT_ENABLED,
 	},
+	{
 		.id = V4L2_CID_MPEG_VIDC_VIDEO_PRESERVE_TEXT_QUALITY,
 		.name = "Preserve Text Qualty",
 		.type = V4L2_CTRL_TYPE_BOOLEAN,
@@ -700,6 +701,7 @@ static struct msm_vidc_ctrl msm_venc_ctrls[] = {
 		.default_value =
 			V4L2_MPEG_VIDC_VIDEO_PRESERVE_TEXT_QUALITY_DISABLED,
 	},
+	{
 		.id = V4L2_CID_MPEG_VIDC_VIDEO_REQUEST_SEQ_HEADER,
 		.name = "Request Seq Header",
 		.type = V4L2_CTRL_TYPE_BUTTON,
