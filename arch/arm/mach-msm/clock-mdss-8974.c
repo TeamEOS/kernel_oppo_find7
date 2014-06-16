@@ -1975,7 +1975,9 @@ static struct hdmi_pll_vco_clk hdmi_vco_clk = {
 };
 
 static struct div_clk hdmipll_div1_clk = {
-	.div = 1,
+    .data = {
+    	.div = 1,
+    },
 	.c = {
 		.parent = &hdmi_vco_clk.c,
 		.dbg_name = "hdmipll_div1_clk",
@@ -1986,7 +1988,9 @@ static struct div_clk hdmipll_div1_clk = {
 };
 
 static struct div_clk hdmipll_div2_clk = {
-	.div = 2,
+    .data = {
+    	.div = 2,
+    },
 	.c = {
 		.parent = &hdmi_vco_clk.c,
 		.dbg_name = "hdmipll_div2_clk",
@@ -1997,7 +2001,9 @@ static struct div_clk hdmipll_div2_clk = {
 };
 
 static struct div_clk hdmipll_div4_clk = {
-	.div = 4,
+    .data = {
+    	.div = 4,
+    },
 	.c = {
 		.parent = &hdmi_vco_clk.c,
 		.dbg_name = "hdmipll_div4_clk",
@@ -2008,7 +2014,9 @@ static struct div_clk hdmipll_div4_clk = {
 };
 
 static struct div_clk hdmipll_div6_clk = {
-	.div = 6,
+    .data = {
+    	.div = 6,
+    },
 	.c = {
 		.parent = &hdmi_vco_clk.c,
 		.dbg_name = "hdmipll_div6_clk",
@@ -2093,7 +2101,9 @@ static struct mux_clk hdmipll_mux_clk = {
 };
 
 struct div_clk hdmipll_clk_src = {
-	.div = 5,
+    .data = {
+    	.div = 5,
+    },
 	.c = {
 		.parent = &hdmipll_mux_clk.c,
 		.dbg_name = "hdmipll_clk_src",
@@ -2139,4 +2149,3 @@ void __init mdss_clk_ctrl_pre_init(struct clk *ahb_clk)
 	hdmi_mux_ops = clk_ops_gen_mux;
 	hdmi_mux_ops.prepare = hdmi_mux_prepare;
 }
-
