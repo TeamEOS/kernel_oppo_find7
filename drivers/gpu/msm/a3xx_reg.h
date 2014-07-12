@@ -493,6 +493,9 @@
 #define RBBM_RBBM_CTL_ENABLE_PWR_CTR0  BIT(16)
 #define RBBM_RBBM_CTL_ENABLE_PWR_CTR1  BIT(17)
 
+/* Bit flag for RBMM_PERFCTR_CTL */
+#define RBBM_PERFCTR_CTL_ENABLE BIT(0)
+
 /* Various flags used by the context switch code */
 
 #define SP_MULTI 0
@@ -771,9 +774,6 @@
 #define SP_ALU_ACTIVE_CYCLES           0x1D
 #define SP0_ICL1_MISSES                0x1A
 #define SP_FS_CFLOW_INSTRUCTIONS       0x0C
-
-/* COUNTABLE FOR TSE PERFCOUNTER */
-#define TSE_INPUT_PRIM_NUM             0x0
 
 /* VBIF PERFCOUNTER ENA/CLR values */
 #define VBIF_PERF_CNT_0 BIT(0)

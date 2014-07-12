@@ -122,7 +122,6 @@ KGSL_DEBUGFS_LOG(cmd_log);
 KGSL_DEBUGFS_LOG(ctxt_log);
 KGSL_DEBUGFS_LOG(mem_log);
 KGSL_DEBUGFS_LOG(pwr_log);
-KGSL_DEBUGFS_LOG(ft_log);
 
 static int memfree_hist_print(struct seq_file *s, void *unused)
 {
@@ -191,8 +190,6 @@ void kgsl_device_debugfs_init(struct kgsl_device *device)
 				&pwr_log_fops);
 	debugfs_create_file("memfree_history", 0444, device->d_debugfs, device,
 				&memfree_hist_fops);
-	debugfs_create_file("log_level_ft", 0644, device->d_debugfs, device,
-				&ft_log_fops);
 
 	/* Create postmortem dump control files */
 
@@ -340,6 +337,9 @@ kgsl_process_init_debugfs(struct kgsl_process_private *private)
 	if (!private->debug_root)
 		return -EINVAL;
 
+	private->debug_root->d_inode->i_uid = proc_d_debugfs->d_inode->i_uid;
+	private->debug_root->d_inode->i_gid = proc_d_debugfs->d_inode->i_gid;
+
 	/*
 	 * debugfs_create_dir() and debugfs_create_file() both
 	 * return -ENODEV if debugfs is disabled in the kernel.
@@ -358,6 +358,9 @@ kgsl_process_init_debugfs(struct kgsl_process_private *private)
 
 		if (ret == -ENODEV)
 			ret = 0;
+	} else if (dentry) {
+		dentry->d_inode->i_uid = proc_d_debugfs->d_inode->i_uid;
+		dentry->d_inode->i_gid = proc_d_debugfs->d_inode->i_gid;
 	}
 
 	return ret;
