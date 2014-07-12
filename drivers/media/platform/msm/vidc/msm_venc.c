@@ -2365,7 +2365,6 @@ int msm_venc_g_fmt(struct msm_vidc_inst *inst, struct v4l2_format *f)
 	int i;
 	u32 height, width;
 	int extra_idx = 0;
-	struct hal_buffer_requirements *buff_req_buffer;
 	if (!inst || !f) {
 		dprintk(VIDC_ERR,
 			"Invalid input, inst = %p, format = %p\n", inst, f);
@@ -2392,12 +2391,9 @@ int msm_venc_g_fmt(struct msm_vidc_inst *inst, struct v4l2_format *f)
 		}
 		extra_idx = EXTRADATA_IDX(fmt->num_planes);
 		if (extra_idx && (extra_idx < VIDEO_MAX_PLANES)) {
-			buff_req_buffer =
-				get_buff_req_buffer(inst,
-					HAL_BUFFER_EXTRADATA_OUTPUT);
 			f->fmt.pix_mp.plane_fmt[extra_idx].sizeimage =
-				buff_req_buffer ?
-				buff_req_buffer->buffer_size : 0;
+				inst->buff_req.buffer
+				[HAL_BUFFER_EXTRADATA_OUTPUT].buffer_size;
 		}
 		for (i = 0; i < fmt->num_planes; ++i) {
 			inst->bufq[CAPTURE_PORT].vb2_bufq.plane_sizes[i] =
