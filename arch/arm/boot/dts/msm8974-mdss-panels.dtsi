@@ -19,5 +19,6 @@
 /include/ "dsi-panel-jdi-dualmipi1-video.dtsi"
 /include/ "dsi-panel-jdi-dualmipi0-cmd.dtsi"
 /include/ "dsi-panel-jdi-dualmipi1-cmd.dtsi"
-/include/ "dsi-panel-jdi-1440p-video.dtsi"
+/include/ "dsi-panel-jdi-1440p-video0.dtsi"
+/include/ "dsi-panel-jdi-1440p-video1.dtsi"
 /include/ "dsi-panel-sharp-1080p-cmd.dtsi"
