@@ -2400,7 +2400,7 @@ static int mdss_mdp_overlay_on(struct msm_fb_data_type *mfd)
 		rc = mdss_mdp_overlay_start(mfd);
 		if (!IS_ERR_VALUE(rc) && (mfd->panel_info->type != DTV_PANEL) &&
 			(mfd->panel_info->type != WRITEBACK_PANEL)) {
-			rc = mdss_mdp_overlay_kickoff(mfd);
+			rc = mdss_mdp_overlay_kickoff(mfd, NULL);
 
 		if (mfd->panel_info->type == MIPI_CMD_PANEL)
 			mdss_mdp_display_wait4pingpong(mdp5_data->ctl);
