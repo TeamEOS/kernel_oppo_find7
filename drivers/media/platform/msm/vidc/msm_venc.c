@@ -731,6 +731,7 @@ static struct msm_vidc_ctrl msm_venc_ctrls[] = {
 		.minimum = BITSTREAM_RESTRICT_DISABLED,
 		.maximum = BITSTREAM_RESTRICT_ENABLED,
 		.default_value = BITSTREAM_RESTRICT_ENABLED,
+        .cluster = 0,
 	},
 	{
 		.id = V4L2_CID_MPEG_VIDC_VIDEO_PRESERVE_TEXT_QUALITY,
@@ -740,6 +741,7 @@ static struct msm_vidc_ctrl msm_venc_ctrls[] = {
 		.maximum = V4L2_MPEG_VIDC_VIDEO_PRESERVE_TEXT_QUALITY_ENABLED,
 		.default_value =
 			V4L2_MPEG_VIDC_VIDEO_PRESERVE_TEXT_QUALITY_DISABLED,
+        .cluster = 0,
 	},
 	{
 		.id = V4L2_CID_MPEG_VIDC_VIDEO_REQUEST_SEQ_HEADER,
@@ -751,6 +753,7 @@ static struct msm_vidc_ctrl msm_venc_ctrls[] = {
 		.step = 0,
 		.menu_skip_mask = 0,
 		.qmenu = NULL,
+        .cluster = 0,
 	}
 };
 
