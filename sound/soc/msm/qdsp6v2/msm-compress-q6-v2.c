@@ -1123,7 +1123,7 @@ static int msm_compr_ack(struct snd_compr_stream *cstream,
 }
 
 static int msm_compr_copy(struct snd_compr_stream *cstream,
-			  char __user *buf, size_t count)
+			  const char __user *buf, size_t count)
 {
 	struct snd_compr_runtime *runtime = cstream->runtime;
 	struct msm_compr_audio *prtd = runtime->private_data;
