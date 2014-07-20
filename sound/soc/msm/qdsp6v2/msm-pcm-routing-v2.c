@@ -48,6 +48,7 @@ struct msm_pcm_routing_bdai_data {
 	unsigned int  sample_rate;
 	unsigned int  channel;
 	unsigned int  format;
+	unsigned long perf_mode;
 };
 
 #define INVALID_SESSION -1
