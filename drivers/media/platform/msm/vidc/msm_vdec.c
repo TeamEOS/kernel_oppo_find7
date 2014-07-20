@@ -19,9 +19,12 @@
 #include "msm_smem.h"
 #include "msm_vidc_debug.h"
 
+#ifndef VIDEO_MAX_FRAME
+#define VIDEO_MAX_FRAME 6
+#endif
+
 #define MSM_VDEC_DVC_NAME "msm_vdec_8974"
 #define MIN_NUM_OUTPUT_BUFFERS 4
-#define MAX_NUM_OUTPUT_BUFFERS 6
 #define DEFAULT_CONCEAL_COLOR 0x0
 #define MAX_NUM_OUTPUT_BUFFERS VIDEO_MAX_FRAME
 #define DEFAULT_VIDEO_CONCEAL_COLOR_BLACK 0x8080
