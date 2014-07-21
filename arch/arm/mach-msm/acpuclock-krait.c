@@ -1218,6 +1218,10 @@ static struct pvs_table * __init select_freq_plan(
 			 drv.pvs_bin);
 	}
 
+#ifdef CONFIG_DEBUG_FS
+        krait_chip_variant = drv.pvs_bin;
+#endif
+
 #ifdef VENDOR_EDIT 
 //Shu.Liu@OnlineRd.Driver, 2013/12/28, modified core Vdd for EVT1/EVT2
 	pcb_version = get_pcb_version();
@@ -1230,11 +1234,6 @@ static struct pvs_table * __init select_freq_plan(
 #else
 	return &params->pvs_tables[drv.pvs_rev][drv.speed_bin][drv.pvs_bin];         
 #endif /* VENDOR_EDIT */
-
-#ifdef CONFIG_DEBUG_FS
-        krait_chip_variant = drv.pvs_bin;
-#endif
-	return &params->pvs_tables[drv.speed_bin][drv.pvs_bin];
 }
 
 static void __init drv_data_init(struct device *dev,
