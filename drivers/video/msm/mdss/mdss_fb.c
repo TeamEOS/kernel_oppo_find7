@@ -313,7 +313,7 @@ static ssize_t mdss_mdp_lcdoff_event(struct device *dev,
 {
 	if(get_pcb_version() >= HW_VERSION__20){
 		struct mdss_panel_data * pdata;
-		int rc;
+		int rc = 0;
 		pr_err("find7s yxr\n");
 		pdata = &panel_data->panel_data;
 		do {
