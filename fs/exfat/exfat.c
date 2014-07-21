@@ -1065,7 +1065,7 @@ INT32 ffsSetAttr(struct inode *inode, UINT32 attr)
 
 INT32 ffsGetStat(struct inode *inode, DIR_ENTRY_T *info)
 {
-	UINT32 sector;
+	UINT32 sector = 0;
 	INT32 count;
 	CHAIN_T dir;
 	UNI_NAME_T uni_name;
@@ -1185,7 +1185,7 @@ INT32 ffsGetStat(struct inode *inode, DIR_ENTRY_T *info)
 
 INT32 ffsSetStat(struct inode *inode, DIR_ENTRY_T *info)
 {
-	UINT32 sector;
+	UINT32 sector = 0;
 	TIMESTAMP_T tm;
 	DENTRY_T *ep, *ep2;
 	ENTRY_SET_CACHE_T *es=NULL;
@@ -1865,7 +1865,7 @@ void fat_free_cluster(struct super_block *sb, CHAIN_T *p_chain, INT32 do_relse)
 	UINT32 clu, prev;
 	FS_INFO_T *p_fs = &(EXFAT_SB(sb)->fs_info);
 	INT32 i;
-	UINT32 sector;
+	UINT32 sector = 0;
 
 	if ((p_chain->dir == CLUSTER_32(0)) || (p_chain->dir == CLUSTER_32(~0)))
 		return;
@@ -1906,7 +1906,7 @@ void exfat_free_cluster(struct super_block *sb, CHAIN_T *p_chain, INT32 do_relse
 	UINT32 clu;
 	FS_INFO_T *p_fs = &(EXFAT_SB(sb)->fs_info);
 	INT32 i;
-	UINT32 sector;
+	UINT32 sector = 0;
 
 	if ((p_chain->dir == CLUSTER_32(0)) || (p_chain->dir == CLUSTER_32(~0)))
 		return;
@@ -2144,7 +2144,7 @@ void free_alloc_bitmap(struct super_block *sb)
 INT32 set_alloc_bitmap(struct super_block *sb, UINT32 clu)
 {
 	INT32 i, b;
-	UINT32 sector;
+	UINT32 sector = 0;
 	FS_INFO_T *p_fs = &(EXFAT_SB(sb)->fs_info);
 	BD_INFO_T *p_bd = &(EXFAT_SB(sb)->bd_info);
 
@@ -2161,7 +2161,7 @@ INT32 set_alloc_bitmap(struct super_block *sb, UINT32 clu)
 INT32 clr_alloc_bitmap(struct super_block *sb, UINT32 clu)
 {
 	INT32 i, b;
-	UINT32 sector;
+	UINT32 sector = 0;
 #if EXFAT_CONFIG_DISCARD
 	struct exfat_sb_info *sbi = EXFAT_SB(sb);
 	struct exfat_mount_options *opts = &sbi->options;
@@ -2755,7 +2755,7 @@ void exfat_set_entry_time(DENTRY_T *p_entry, TIMESTAMP_T *tp, UINT8 mode)
 INT32 fat_init_dir_entry(struct super_block *sb, CHAIN_T *p_dir, INT32 entry, UINT32 type,
 						 UINT32 start_clu, UINT64 size)
 {
-	UINT32 sector;
+	UINT32 sector = 0;
 	DOS_DENTRY_T *dos_ep;
 
 	dos_ep = (DOS_DENTRY_T *) get_entry_in_dir(sb, p_dir, entry, &sector);
@@ -2771,7 +2771,7 @@ INT32 fat_init_dir_entry(struct super_block *sb, CHAIN_T *p_dir, INT32 entry, UI
 INT32 exfat_init_dir_entry(struct super_block *sb, CHAIN_T *p_dir, INT32 entry, UINT32 type,
 						   UINT32 start_clu, UINT64 size)
 {
-	UINT32 sector;
+	UINT32 sector = 0;
 	UINT8 flags;
 	FILE_DENTRY_T *file_ep;
 	STRM_DENTRY_T *strm_ep;
@@ -2799,7 +2799,7 @@ INT32 fat_init_ext_entry(struct super_block *sb, CHAIN_T *p_dir, INT32 entry, IN
 						 UNI_NAME_T *p_uniname, DOS_NAME_T *p_dosname)
 {
 	INT32 i;
-	UINT32 sector;
+	UINT32 sector = 0;
 	UINT8 chksum;
 	UINT16 *uniname = p_uniname->name;
 	DOS_DENTRY_T *dos_ep;
@@ -2841,7 +2841,7 @@ INT32 exfat_init_ext_entry(struct super_block *sb, CHAIN_T *p_dir, INT32 entry, 
 						   UNI_NAME_T *p_uniname, DOS_NAME_T *p_dosname)
 {
 	INT32 i;
-	UINT32 sector;
+	UINT32 sector = 0;
 	UINT16 *uniname = p_uniname->name;
 	FILE_DENTRY_T *file_ep;
 	STRM_DENTRY_T *strm_ep;
@@ -2983,7 +2983,7 @@ void init_name_entry(NAME_DENTRY_T *ep, UINT16 *uniname)
 void fat_delete_dir_entry(struct super_block *sb, CHAIN_T *p_dir, INT32 entry, INT32 order, INT32 num_entries)
 {
 	INT32 i;
-	UINT32 sector;
+	UINT32 sector = 0;
 	DENTRY_T *ep;
 	FS_INFO_T *p_fs = &(EXFAT_SB(sb)->fs_info);
 
@@ -3000,7 +3000,7 @@ void fat_delete_dir_entry(struct super_block *sb, CHAIN_T *p_dir, INT32 entry, I
 void exfat_delete_dir_entry(struct super_block *sb, CHAIN_T *p_dir, INT32 entry, INT32 order, INT32 num_entries)
 {
 	INT32 i;
-	UINT32 sector;
+	UINT32 sector = 0;
 	DENTRY_T *ep;
 	FS_INFO_T *p_fs = &(EXFAT_SB(sb)->fs_info);
 
@@ -3017,7 +3017,7 @@ void exfat_delete_dir_entry(struct super_block *sb, CHAIN_T *p_dir, INT32 entry,
 void update_dir_checksum(struct super_block *sb, CHAIN_T *p_dir, INT32 entry)
 {
 	INT32 i, num_entries;
-	UINT32 sector;
+	UINT32 sector = 0;
 	UINT16 chksum;
 	FILE_DENTRY_T *file_ep;
 	DENTRY_T *ep;
@@ -4668,7 +4668,7 @@ INT32 create_file(struct inode *inode, CHAIN_T *p_dir, UNI_NAME_T *p_uniname, UI
 void remove_file(struct inode *inode, CHAIN_T *p_dir, INT32 entry)
 {
 	INT32 num_entries;
-	UINT32 sector;
+	UINT32 sector = 0;
 	DENTRY_T *ep;
 	struct super_block *sb = inode->i_sb;
 	FS_INFO_T *p_fs = &(EXFAT_SB(sb)->fs_info);
