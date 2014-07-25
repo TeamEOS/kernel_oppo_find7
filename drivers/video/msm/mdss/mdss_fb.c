@@ -2405,7 +2405,7 @@ static int mdss_fb_ioctl(struct fb_info *info, unsigned int cmd,
 
 	ret = __ioctl_wait_idle(mfd, cmd);
 	if (ret)
-		goto exit;
+		return ret;
 
 	switch (cmd) {
 	case MSMFB_CURSOR:
