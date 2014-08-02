@@ -349,7 +349,7 @@ static ssize_t mdss_set_gamma(struct device *dev,
     int index = 0;
 	char a[100];
     sscanf(buf, "%du", &index);
-	pr_err("strlen = %d \n",strlen(buf));
+	pr_debug("strlen = %d \n",strlen(buf));
 	if(strlen(buf)<=2)
     set_gamma(index);
 	else{
@@ -364,7 +364,7 @@ static ssize_t mdss_set_gamma(struct device *dev,
 static ssize_t mdss_get_gamma(struct device *dev,
 		struct device_attribute *attr, char *buf)
 {
-	printk(KERN_INFO "get fix resume gamma index = %d\n",gamma_index);
+	printk(KERN_INFO "%s = %d\n",__func__, gamma_index);
 
     return sprintf(buf, "%d\n", gamma_index);
 }
