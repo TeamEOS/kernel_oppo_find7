@@ -24,6 +24,3 @@
 
 };
 
-&pm8941_chg {
-	qcom,charging-disabled;
-};

@@ -20,8 +20,8 @@
 	interrupt-parent = <&intc>;
 
 	aliases {
-		spi0 = &spi_0;
 		spi7 = &spi_7;
+		spi9 = &spi_9;
 		sdhc1 = &sdhc_1; /* SDC1 eMMC slot */
 		sdhc2 = &sdhc_2; /* SDC2 SD card slot */
 		sdhc3 = &sdhc_3; /* SDC3 SDIO slot */
@@ -287,7 +287,7 @@
 		venus-supply = <&gdsc_venus>;
 		qcom,hfi = "venus";
 		qcom,ocmem-size = <524288>; /* 512 * 1024*/
-		qcom,max-hw-load = <1216800>; /* 3840 x 2160 @ 30 + 1080p @ 30*/
+		qcom,max-hw-load = <1224450>; /* 4k @ 30 + 1080p @ 30*/
 		qcom,clock-names = "core_clk", "iface_clk", "bus_clk", "mem_clk";
 		qcom,clock-configs = <0x3 0x0 0x0 0x0>;
 		qcom,sw-power-collapse;
@@ -344,7 +344,7 @@
 		qcom,vdd-voltage-level = <1 5 7>;
 
 		qcom,hsusb-otg-phy-type = <2>;
-		qcom,hsusb-otg-phy-init-seq = <0x63 0x81 0xffffffff>;
+		qcom,hsusb-otg-phy-init-seq = <0x44 0x80 0x3F 0x81 0x4D 0x82 0x13 0x83 0xffffffff>;	
 		qcom,hsusb-otg-mode = <1>;
 		qcom,hsusb-otg-otg-control = <1>;
 		qcom,hsusb-otg-disable-reset;
@@ -554,6 +554,27 @@
 		qcom,master-id = <84>;
 	};
 
+	spi_9: spi@f9965000 {
+		compatible = "qcom,spi-qup-v2";
+
+		cell-index = <9>;
+		reg-names = "spi_physical";
+		reg = <0xf9965000 0x1000>;
+		interrupt-names = "spi9_irq";
+		interrupts = <0 103 0>;
+
+		spi-max-frequency = <19200000>;
+		#address-cells = <1>;
+		#size-cells = <0>;
+		
+		qcom,gpio-mosi = <&msmgpio 49 0>;
+		qcom,gpio-miso = <&msmgpio 50 0>;
+		qcom,gpio-clk  = <&msmgpio 52 0>;
+		qcom,gpio-cs0  = <&msmgpio 51 0>;
+		
+		qcom,master-id = <84>;
+	};
+
 	tspp: msm_tspp@f99d8000 {
 		compatible = "qcom,msm_tspp";
 		reg = <0xf99d8000 0x1000>, /* MSM_TSIF0_PHYS */
@@ -611,6 +632,8 @@
 		qcom,apps-ch-pipes = <0x60000000>;
 		qcom,ea-pc = <0x30>;
 
+              cdc-es325-supply = <&pm8941_lvs2>;   /*modify for dvt*/ 
+              adnc,reset-gpio = <&msmgpio 67 0>;
 		taiko_codec {
 			compatible = "qcom,taiko-slim-pgd";
 			elemental-addr = [00 01 A0 00 17 02];
@@ -657,11 +680,12 @@
 						   "cdc-vdd-a-1p2v",
 						   "cdc-vddcx-1",
 						   "cdc-vddcx-2";
+		cdc-hpmic_switch-1-supply = <&pm8941_l24>;
 
 			qcom,cdc-micbias-ldoh-v = <0x3>;
 			qcom,cdc-micbias-cfilt1-mv = <1800>;
-			qcom,cdc-micbias-cfilt2-mv = <2700>;
-			qcom,cdc-micbias-cfilt3-mv = <2700>;
+                        qcom,cdc-micbias-cfilt2-mv = <2000>;
+			qcom,cdc-micbias-cfilt3-mv = <1800>;
 			qcom,cdc-micbias1-cfilt-sel = <0x0>;
 			qcom,cdc-micbias2-cfilt-sel = <0x1>;
 			qcom,cdc-micbias3-cfilt-sel = <0x2>;
@@ -671,6 +695,33 @@
 			qcom,cdc-slim-ifd-elemental-addr = [00 00 A0 00 17 02];
 			qcom,cdc-dmic-sample-rate = <4800000>;
 		};
+
+	es325_codec_gen0{
+		compatible = "adnc,es325-codec-gen0";
+		elemental-addr = [00 01 02 00 BE 02];
+
+		adnc,es325-codec-gen0 = "es325-codec-gen0";
+		adnc,es325-codec-gen0-eaddr = [00 01  02 00 BE 02];
+
+		adnc,wakeup-gpio = <&msmgpio 23 0>; 	/* DEFINED BY CUSTOMER */
+		
+		es325-mclk-clk =  <&pm8941_clkdiv2>;
+		adnc,es325-mclk-clk-freq = <19200000>;
+	}; 
+
+	es325_codec_intf{
+		compatible = "adnc,es325-codec-intf";
+		elemental-addr =  [00 00 02 00 BE 02];
+
+		adnc,es325-codec-intf ="es325-codec-intf";
+		adnc,es325-codec-intf-eaddr = [00 01 02 00 BE 02];
+
+		adnc,wakeup-gpio = <&msmgpio 23 0>;	/* DEFINED BY CUSTOMER*/
+
+		es325-mclk-clk = <&pm8941_clkdiv2>;
+		adnc,es325-mclk-clk-freq = <19200000>;
+	}; 
+
 	};
 
 	sound {
@@ -686,7 +737,6 @@
 			    "lpaif_quat_mode_muxsel";
 
 		qcom,audio-routing =
-			"AIF4 VI", "MCLK",
 			"RX_BIAS", "MCLK",
 			"LDO_H", "MCLK",
 			"AIF4 MAD", "MCLK",
@@ -694,10 +744,12 @@
 			"MIC BIAS1 Internal1", "Handset Mic",
 			"AMIC2", "MIC BIAS2 External",
 			"MIC BIAS2 External", "Headset Mic",
-			"AMIC3", "MIC BIAS2 External",
-			"MIC BIAS2 External", "ANCRight Headset Mic",
-			"AMIC4", "MIC BIAS2 External",
-			"MIC BIAS2 External", "ANCLeft Headset Mic",
+			"AMIC3", "MIC BIAS1 External",
+			"MIC BIAS1 External", "Main Mic",
+			"AMIC4", "MIC BIAS1 External",
+			"MIC BIAS1 External", "Second Mic",
+			"AMIC5", "MIC BIAS1 External",
+			"MIC BIAS1 External", "ANC Mic",
 			"DMIC1", "MIC BIAS1 External",
 			"MIC BIAS1 External", "Digital Mic1",
 			"DMIC2", "MIC BIAS1 External",
@@ -722,6 +774,11 @@
 		qcom,sec-auxpcm-gpio-sync = <&msmgpio 80 0>;
 		qcom,sec-auxpcm-gpio-din  = <&msmgpio 81 0>;
 		qcom,sec-auxpcm-gpio-dout = <&msmgpio 82 0>;
+                qcom,hpmic-switch-gpio = <&msmgpio 87 0>;
+                qcom,yda145_ctr-gpio = <&msmgpio 77 0>;
+                qcom,yda145_boots-gpio = <&msmgpio 67 0>;
+                enable_spk-gpio = <&msmgpio 73 0>;
+                cdc_spk-supply = <&pm8941_boost>;
 	};
 
 	spmi_bus: qcom,spmi@fc4c0000 {
@@ -768,7 +825,7 @@
 		qcom,scl-gpio = <&msmgpio 3 0>;
 		qcom,sda-gpio = <&msmgpio 2 0>;
 		qcom,master-id = <86>;
-		status = "disabled";
+		status = "ok";
 	};
 
 	i2c_2: i2c@f9924000 {
@@ -787,31 +844,24 @@
 		qcom,sda-gpio = <&msmgpio 6 0>;
 	};
 
-	spi_0: spi@f9923000 { /* BLSP1 QUP1 */
-		compatible = "qcom,spi-qup-v2";
+	i2c_6: i2c@f9928000 {
+		cell-index = <6>;
+		compatible = "qcom,i2c-qup";
+		reg = <0xf9928000 0x1000>;
 		#address-cells = <1>;
 		#size-cells = <0>;
-		reg-names = "spi_physical", "spi_bam_physical";
-		reg = <0xf9923000 0x1000>,
-		      <0xf9904000 0x19000>;
-		interrupt-names = "spi_irq", "spi_bam_irq";
-		interrupts = <0 95 0>, <0 238 0>;
-		spi-max-frequency = <19200000>;
-
-		qcom,gpio-mosi = <&msmgpio 0 0>;
-		qcom,gpio-miso = <&msmgpio 1 0>;
-		qcom,gpio-clk  = <&msmgpio 3 0>;
-		qcom,gpio-cs2  = <&msmgpio 9 0>;
-
-		qcom,infinite-mode = <0>;
-		qcom,use-bam;
-		qcom,ver-reg-exists;
-		qcom,bam-consumer-pipe-index = <12>;
-		qcom,bam-producer-pipe-index = <13>;
+		reg-names = "qup_phys_addr";
+		interrupts = <0 100 0>;
+		interrupt-names = "qup_err_intr";
+		qcom,i2c-bus-freq = <100000>;
+		qcom,i2c-src-freq = <50000000>;
+		qcom,scl-gpio = <&msmgpio 30 0>;
+		qcom,sda-gpio = <&msmgpio 29 0>;
+		qcom,active-only;
 		qcom,master-id = <86>;
 	};
 
-	clock_krait: qcom,clock-krait@f9016000 {
+	qcom,clock-krait@f9016000 {
 		compatible = "qcom,clock-krait-8974";
 		reg = <0xf9016000 0x20>,
 			<0xf908a000 0x20>,
@@ -2066,8 +2116,8 @@
 		qcom,msm-bus,num-cases = <2>;
 		qcom,msm-bus,num-paths = <1>;
 		qcom,msm-bus,vectors-KBps =
-				<88 618 0 0>,
-				<88 618 0 800>;
+				<54 618 0 0>,
+				<54 618 0 800>;
         };
 
 	qseecom: qcom,qseecom@7b00000 {
@@ -2357,6 +2407,13 @@
 		qcom,rx-ring-size = <64>;
 	};
 
+        memory_hole: qcom,msm-mem-hole {
+                compatible = "qcom,msm-mem-hole";
+                qcom,memblock-remove = <0x5d00000 0x7d00000
+					0xfa00000 0x500000
+					0x05900000 0x100000>; /* Address and Size of Hole */
+        };
+
 	uart7: uart@f995d000 { /*BLSP #2, UART #7 */
 		compatible = "qcom,msm-hsuart-v14";
 		status = "disabled";
@@ -2456,22 +2513,6 @@
 
 	qcom,bcl {
 		compatible = "qcom,bcl";
-	};
-
-	i2c@f9928000 { /* BLSP-1 QUP-6 */
-		cell-index = <3>;
-		compatible = "qcom,i2c-qup";
-		reg = <0xf9928000 0x1000>;
-		#address-cells = <1>;
-		#size-cells = <0>;
-		reg-names = "qup_phys_addr";
-		interrupts = <0 100 0>;
-		interrupt-names = "qup_err_intr";
-		qcom,i2c-bus-freq = <400000>;
-		qcom,i2c-src-freq = <19200000>;
-		qcom,scl-gpio = <&msmgpio 30 0>;
-		qcom,sda-gpio = <&msmgpio 29 0>;
-		qcom,master-id = <86>;
 	};
 
 	qcom,ssm {

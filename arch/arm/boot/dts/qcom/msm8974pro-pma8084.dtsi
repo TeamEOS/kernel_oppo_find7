@@ -79,6 +79,8 @@
 	};
 
 	slim@fe12f000 {
+              cdc-es325-supply = <&pma8084_lvs2>;   /* Modify for dvt*/ 
+              adnc,reset-gpio = <&msmgpio 67 0>;
 		taiko_codec {
 			cdc-vdd-buck-supply = <&pma8084_s5>;
 			cdc-vdd-tx-h-supply = <&pma8084_s4>;
@@ -87,7 +89,15 @@
 			cdc-vdd-a-1p2v-supply = <&pma8084_l1>;
 			cdc-vddcx-1-supply = <&pma8084_l1>;
 			cdc-vddcx-2-supply = <&pma8084_l1>;
+                        cdc-hpmic_switch-1-supply = <&pma8084_l24>;
 		};
+	    es325_codec_gen0{    
+	        es325-mclk-clk =  <&pm8941_clkdiv2>;  
+	    };
+
+	    es325_codec_intf{   
+	        es325-mclk-clk = <&pm8941_clkdiv2>;  
+	    };
 	};
 
 	qcom,clock-krait@f9016000 {
@@ -225,6 +235,3 @@
 	};
 };
 
-&dsi_generic_720p_cmd {
-	qcom,mdss-dsi-bl-pmic-bank-select = <3>;
-};

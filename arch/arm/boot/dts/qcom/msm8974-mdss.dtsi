@@ -109,6 +109,7 @@
 		mdss_fb0: qcom,mdss_fb_primary {
 			cell-index = <0>;
 			compatible = "qcom,mdss-fb";
+			qcom,mdss-fb-split =<720 720>;
 			qcom,memblock-reserve = <0x03200000 0x01E00000>;
 		};
 
@@ -230,6 +231,9 @@
 		vddio-supply = <&pm8941_l12>;
 		qcom,mdss-fb-map = <&mdss_fb0>;
 		qcom,mdss-mdp = <&mdss_mdp>;
+		qcom,platform-reset-gpio = <&pm8941_gpios 19 0>;
+		qcom,platform-enable-gpio = <&msmgpio 58 0>;
+		qcom,platform-te-gpio = <&msmgpio 12 0>;
 		qcom,platform-strength-ctrl = [ff 06];
 		qcom,platform-bist-ctrl = [00 00 b1 ff 00 00];
 		qcom,platform-regulator-settings = [07 09 03 00 20 00 01];
@@ -352,6 +356,7 @@
 		reg-names = "edp_base", "mmss_cc_base";
 		vdda-supply = <&pm8941_l12>;
 		gpio-panel-en = <&msmgpio 58 0>;
+		status = "disable";
 		qcom,mdss-fb-map = <&mdss_fb0>;
 		gpio-panel-hpd = <&msmgpio 102 0>;
 	};
