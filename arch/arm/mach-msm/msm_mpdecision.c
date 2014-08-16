@@ -25,7 +25,7 @@
 
 #include "msm_mpdecision.h"
 #ifdef CONFIG_FB
-#include <linux/lcd_notify.h>
+#include <linux/fb.h>
 #elif defined CONFIG_HAS_EARLYSUSPEND
 #include <linux/earlysuspend.h>
 #endif
@@ -50,14 +50,14 @@
 DEFINE_PER_CPU(struct msm_mpdec_cpudata_t, msm_mpdec_cpudata);
 EXPORT_PER_CPU_SYMBOL_GPL(msm_mpdec_cpudata);
 
+
 static bool mpdec_suspended = false;
 #ifndef CONFIG_HAS_EARLYSUSPEND
-static struct notifier_block msm_mpdec_lcd_notif;
+static struct notifier_block msm_mpdec_fb_notif;
 #endif
 static struct delayed_work msm_mpdec_work;
 static struct workqueue_struct *msm_mpdec_workq;
 static DEFINE_MUTEX(mpdec_msm_cpu_lock);
-static DEFINE_MUTEX(mpdec_msm_susres_lock);
 #ifdef CONFIG_MSM_MPDEC_INPUTBOOST_CPUMIN
 static struct workqueue_struct *mpdec_input_wq;
 static DEFINE_PER_CPU(struct work_struct, mpdec_input_work);
@@ -545,8 +545,8 @@ static struct input_handler mpdec_input_handler = {
 };
 #endif
 
-static void msm_mpdec_suspend(struct work_struct * msm_mpdec_suspend_work) {
-	int cpu = nr_cpu_ids;
+static void msm_mpdec_suspend(void) {
+    int cpu = nr_cpu_ids;
 #ifdef CONFIG_MSM_MPDEC_INPUTBOOST_CPUMIN
 	is_screen_on = false;
 #endif
@@ -575,62 +575,64 @@ static void msm_mpdec_suspend(struct work_struct * msm_mpdec_suspend_work) {
 
 	pr_info(MPDEC_TAG"Screen -> off. Deactivated mpdecision.\n");
 }
-static DECLARE_WORK(msm_mpdec_suspend_work, msm_mpdec_suspend);
 
-static void msm_mpdec_resume(struct work_struct * msm_mpdec_suspend_work) {
-	int cpu = nr_cpu_ids;
+static void msm_mpdec_resume(void) {
+    int cpu = nr_cpu_ids;
 #ifdef CONFIG_MSM_MPDEC_INPUTBOOST_CPUMIN
 	is_screen_on = true;
 #endif
 
-	if (!mpdec_suspended) {
-		pr_info(MPDEC_TAG"Screen -> on\n");
-		return;
-	}
+    if (msm_mpdec_tuners_ins.scroff_single_core) {
+        /* wake up main work thread */
+        was_paused = true;
+        queue_delayed_work(msm_mpdec_workq, &msm_mpdec_work, 0);
 
-	mpdec_suspended = false;
+        /* restore min/max cpus limits */
+        for (cpu=1; cpu<CONFIG_NR_CPUS; cpu++) {
+            if (cpu < msm_mpdec_tuners_ins.min_cpus) {
+                if (!cpu_online(cpu))
+                    mpdec_cpu_up(cpu);
+            } else if (cpu > msm_mpdec_tuners_ins.max_cpus) {
+                if (cpu_online(cpu))
+                    mpdec_cpu_down(cpu);
+            }
+        }
 
-	if (msm_mpdec_tuners_ins.scroff_single_core) {
-		/* wake up main work thread */
-		was_paused = true;
-		queue_delayed_work(msm_mpdec_workq, &msm_mpdec_work, 0);
-		/* restore min/max cpus limits */
-		for (cpu=1; cpu<CONFIG_NR_CPUS; cpu++) {
-			if (cpu < msm_mpdec_tuners_ins.min_cpus) {
-				if (!cpu_online(cpu))
-					mpdec_cpu_up(cpu);
-			} else if (cpu > msm_mpdec_tuners_ins.max_cpus) {
-				if (cpu_online(cpu))
-					mpdec_cpu_down(cpu);
-			}
-		}
-		pr_info(MPDEC_TAG"Screen -> on. Activated mpdecision. | Mask=[%d%d%d%d]\n",
-				cpu_online(0), cpu_online(1), cpu_online(2), cpu_online(3));
-	} else {
-		pr_info(MPDEC_TAG"Screen -> on\n");
-	}
+        pr_info(MPDEC_TAG"Screen -> on. Activated mpdecision. | Mask=[%d%d%d%d]\n",
+                cpu_online(0), cpu_online(1), cpu_online(2), cpu_online(3));
+    } else {
+        pr_info(MPDEC_TAG"Screen -> on\n");
+    }
 }
-static DECLARE_WORK(msm_mpdec_resume_work, msm_mpdec_resume);
 
 #ifdef CONFIG_FB
-static int msm_mpdec_lcd_notifier_callback(struct notifier_block *this,
+static int fb_notifier_callback(struct notifier_block *this,
 				unsigned long event, void *data) {
-	pr_debug("%s: event = %lu\n", __func__, event);
+	int blank_mode;
+	static int first = 1;
 
-	switch (event) {
-	case LCD_EVENT_OFF_START:
-		mutex_lock(&mpdec_msm_susres_lock);
-		schedule_work(&msm_mpdec_suspend_work);
+	if (event != FB_EVENT_BLANK || data == NULL)
+		return 0;
+
+	blank_mode = *(int*)(((struct fb_event*)data)->data);
+	pr_debug("FB_CB: event = %lu, blank mode = %d\n", event, blank_mode);
+
+	switch (blank_mode) {
+	case FB_BLANK_UNBLANK:
+		if (first) {
+			msm_mpdec_resume();
+			first = 0;
+		} else {
+			first = 1;
+		}
 		break;
-	case LCD_EVENT_ON_START:
-		mutex_lock(&mpdec_msm_susres_lock);
-		schedule_work(&msm_mpdec_resume_work);
-		break;
-	case LCD_EVENT_OFF_END:
-		mutex_unlock(&mpdec_msm_susres_lock);
-		break;
-	case LCD_EVENT_ON_END:
-		mutex_unlock(&mpdec_msm_susres_lock);
+	case FB_BLANK_POWERDOWN:
+		if (first) {
+			msm_mpdec_suspend();
+			first = 0;
+		} else {
+			first = 1;
+		}
 		break;
 	default:
 		break;
@@ -1200,43 +1202,41 @@ static int __init msm_mpdec_init(void) {
 		queue_delayed_work(msm_mpdec_workq, &msm_mpdec_work,
 					msecs_to_jiffies(msm_mpdec_tuners_ins.startdelay));
 
-	msm_mpdec_kobject = kobject_create_and_add("msm_mpdecision", kernel_kobj);
-	if (msm_mpdec_kobject) {
-		rc = sysfs_create_group(msm_mpdec_kobject,
-					&msm_mpdec_attr_group);
-		if (rc) {
-			pr_warn(MPDEC_TAG"sysfs: ERROR, could not create sysfs group");
-		}
-		rc = sysfs_create_group(msm_mpdec_kobject,
-					&msm_mpdec_stats_attr_group);
-		if (rc) {
-			pr_warn(MPDEC_TAG"sysfs: ERROR, could not create sysfs stats group");
-		}
-	} else
-		pr_warn(MPDEC_TAG"sysfs: ERROR, could not create sysfs kobj");
-
-	pr_info(MPDEC_TAG"%s init complete.", __func__);
-
-
 #ifdef CONFIG_FB
-	msm_mpdec_lcd_notif.notifier_call = msm_mpdec_lcd_notifier_callback;
-	if (lcd_register_client(&msm_mpdec_lcd_notif) != 0) {
-		pr_err("%s: Failed to register lcd callback\n", __func__);
+	msm_mpdec_fb_notif.notifier_call = fb_notifier_callback;
+	if (fb_register_client(&msm_mpdec_fb_notif) != 0) {
+		pr_err("%s: Failed to register fb callback\n", __func__);
 		err = -EINVAL;
-		lcd_unregister_client(&msm_mpdec_lcd_notif);
+		goto err_fb_register;
 	}
 #elif defined CONFIG_HAS_EARLYSUSPEND
 	register_early_suspend(&msm_mpdec_early_suspend_handler);
 #endif
 
-	return err;
+    msm_mpdec_kobject = kobject_create_and_add("msm_mpdecision", kernel_kobj);
+    if (msm_mpdec_kobject) {
+        rc = sysfs_create_group(msm_mpdec_kobject,
+                                &msm_mpdec_attr_group);
+        if (rc) {
+            pr_warn(MPDEC_TAG"sysfs: ERROR, could not create sysfs group");
+        }
+        rc = sysfs_create_group(msm_mpdec_kobject,
+                                &msm_mpdec_stats_attr_group);
+        if (rc) {
+            pr_warn(MPDEC_TAG"sysfs: ERROR, could not create sysfs stats group");
+        }
+    } else
+        pr_warn(MPDEC_TAG"sysfs: ERROR, could not create sysfs kobj");
+
+	pr_info(MPDEC_TAG"%s init complete.", __func__);
+
+
+err_fb_register:
+    return err;
 }
 late_initcall(msm_mpdec_init);
 
 void msm_mpdec_exit(void) {
-#ifndef CONFIG_HAS_EARLYSUSPEND
-	lcd_unregister_client(&msm_mpdec_lcd_notif);
-#endif
 #ifdef CONFIG_MSM_MPDEC_INPUTBOOST_CPUMIN
 	input_unregister_handler(&mpdec_input_handler);
 	destroy_workqueue(msm_mpdec_revib_workq);
